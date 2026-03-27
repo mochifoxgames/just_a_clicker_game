@@ -1,0 +1,1918 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, minimum-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
+    <meta name="apple-mobile-web-app-capable" content="yes">
+    <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+    <meta name="mobile-web-app-capable" content="yes">
+    <title>Just a Clicker Game</title>
+    <link rel="stylesheet" href="game.css">
+</head>
+<body>
+    <!-- Instability pulse vignette — fixed overlay, opacity driven by JS based on instability % -->
+    <div id="instability-vignette" aria-hidden="true"></div>
+    <div id="nexus-loader">
+        <video id="nl-loader-video" src="video/loading-screen.mp4" autoplay loop muted playsinline></video>
+        <div id="nl-loader-overlay">
+            <div class="nl-bar-wrap"><div class="nl-bar"></div></div>
+            <div class="nl-status" id="nl-status-text">Loading...</div>
+        </div>
+    </div>
+</div>
+
+    <canvas id="bg-canvas"></canvas>
+    <div id="bird-layer"></div>
+    <!-- Bird catch banner — shows what type of anomaly was caught and its effect -->
+    <div id="bird-catch-banner" aria-live="polite"></div>
+<!-- SETTINGS MODAL -->
+<div id="settings-overlay">
+    <div class="settings-box">
+        <h2>// System Config</h2>
+
+        <!-- Tab navigation -->
+        <div class="settings-tabs">
+            <button class="settings-tab active" id="stab-0" onclick="Settings.switchTab(0)">⚙ SYSTEM</button>
+            <button class="settings-tab" id="stab-1" onclick="Settings.switchTab(1)">🖥 DISPLAY</button>
+            <button class="settings-tab" id="stab-2" onclick="Settings.switchTab(2)">💾 DATA</button>
+            <button class="settings-tab" id="stab-3" onclick="Settings.switchTab(3)">⚠ DANGER</button>
+        </div>
+
+        <!-- TAB 0: SYSTEM -->
+        <div class="settings-tab-panel active" id="settings-tab-0">
+
+        <div class="settings-row">
+            <div>
+                <div class="settings-label">🔊 Sound Effects</div>
+                <div class="settings-sublabel">All in-game audio</div>
+            </div>
+            <div class="toggle-wrap">
+                <label class="toggle">
+                    <input type="checkbox" id="toggle-sound" checked onchange="Settings.toggleSound(this.checked)">
+                    <div class="toggle-track"></div>
+                    <div class="toggle-thumb"></div>
+                </label>
+                <span class="toggle-state" id="sound-state">ON</span>
+            </div>
+        </div>
+
+        <div class="settings-row">
+            <div>
+                <div class="settings-label">💾 Auto-Save</div>
+                <div class="settings-sublabel">Saves every 30 seconds</div>
+            </div>
+            <div class="toggle-wrap">
+                <label class="toggle">
+                    <input type="checkbox" id="toggle-autosave" checked onchange="Settings.toggleAutosave(this.checked)">
+                    <div class="toggle-track"></div>
+                    <div class="toggle-thumb"></div>
+                </label>
+                <span class="toggle-state" id="autosave-state">ON</span>
+            </div>
+        </div>
+
+        <div class="settings-row">
+            <div>
+                <div class="settings-label">🔕 Quiet Mode</div>
+                <div class="settings-sublabel">Suppresses lore entries, world events, and system alerts during active play. Notifications resume when disabled.</div>
+            </div>
+            <div class="toggle-wrap">
+                <label class="toggle">
+                    <input type="checkbox" id="toggle-quietmode" onchange="Settings.toggleQuietMode(this.checked)">
+                    <div class="toggle-track"></div>
+                    <div class="toggle-thumb"></div>
+                </label>
+                <span class="toggle-state" id="quietmode-state">OFF</span>
+            </div>
+        </div>
+
+        <div class="settings-row" style="flex-direction:column; align-items:flex-start; gap:10px;">
+            <div class="settings-label">📡 Tutorial</div>
+            <div class="settings-sublabel" style="margin-bottom:8px;">Show the new-player tutorial again</div>
+            <button onclick="Settings.replayTutorial()" style="
+                padding:8px 18px; background:rgba(0,60,120,0.35);
+                border:1px solid rgba(51,153,255,0.35); color:#88bbff;
+                border-radius:6px; cursor:pointer; font-size:0.72rem;
+                letter-spacing:3px; text-transform:uppercase;
+                font-family:'Courier New',monospace; transition:0.2s;">
+                ⟳ REPLAY TUTORIAL
+            </button>
+        </div>
+
+        <div class="settings-row" style="flex-direction:column; align-items:flex-start; gap:10px;">
+            <div class="settings-label">👤 Username</div>
+            <div class="settings-username-row">
+                <input id="settings-username-input" type="text" maxlength="18" placeholder="New username" autocomplete="off" spellcheck="false"
+                       onkeydown="if(event.key==='Enter') Settings.changeUsername()">
+                <button id="settings-username-save" onclick="Settings.changeUsername()">APPLY</button>
+            </div>
+        </div>
+
+        <div id="gaslighting-slider-row" class="settings-row" style="flex-direction:column;align-items:flex-start;gap:6px;border-top:1px solid rgba(255,50,20,0.12);padding-top:14px;margin-top:4px;">
+            <div class="settings-label" style="color:#7a3322;">⚠ Simulated Screams</div>
+            <div class="settings-sublabel" style="color:#5a2211;">Background Agony — unauthorised access to this parameter is inadvisable.</div>
+            <div style="display:flex;align-items:center;gap:10px;margin-top:4px;">
+                <input type="range" id="simulated-screams-slider" min="0" max="100" value="0"
+                    oninput="GaslightingSlider.onMove(this)" onmousedown="GaslightingSlider.onDown()"
+                    title="This slider does not do what it says. Do not drag it to 100%.">
+                <span id="scream-pct" style="font-family:'Courier New',monospace;font-size:0.6rem;color:#663333;letter-spacing:2px;">0%</span>
+            </div>
+        </div>
+
+        <div style="margin-bottom:14px;">
+            <button onclick="if(window.ParanoiaSave)ParanoiaSave.save();else{if(typeof Game!=='undefined')Game.save();}" style="width:100%;padding:9px 14px;background:rgba(4,8,18,0.9);border:1px solid rgba(51,153,255,0.3);border-radius:7px;color:#5588bb;font-family:'Courier New',monospace;font-size:0.52rem;letter-spacing:2px;cursor:pointer;">
+                💾 MANUAL SAVE
+            </button>
+        </div>
+
+        <div id="settings-msg"></div>
+        </div><!-- end tab 0 -->
+
+        <!-- TAB 1: DISPLAY -->
+        <div class="settings-tab-panel" id="settings-tab-1">
+
+        <div class="settings-row">
+            <div>
+                <div class="settings-label">✨ Simple Effects</div>
+                <div class="settings-sublabel">Disables backdrop blur only — keeps glows, shadows &amp; animations. Good middle ground for mid-range hardware.</div>
+            </div>
+            <div class="toggle-wrap">
+                <label class="toggle">
+                    <input type="checkbox" id="toggle-simpleeffects" onchange="Settings.toggleSimpleEffects(this.checked)">
+                    <div class="toggle-track"></div>
+                    <div class="toggle-thumb"></div>
+                </label>
+                <span class="toggle-state" id="simpleeffects-state">OFF</span>
+            </div>
+        </div>
+        <div class="settings-row">
+            <div>
+                <div class="settings-label">🖥 Low Graphics Mode</div>
+                <div class="settings-sublabel">Reduces blur, glows &amp; particles for performance</div>
+            </div>
+            <div class="toggle-wrap">
+                <label class="toggle">
+                    <input type="checkbox" id="toggle-lowgfx" onchange="Settings.toggleLowGfx(this.checked)">
+                    <div class="toggle-track"></div>
+                    <div class="toggle-thumb"></div>
+                </label>
+                <span class="toggle-state" id="lowgfx-state">OFF</span>
+            </div>
+        </div>
+        <div class="settings-row">
+            <div>
+                <div class="settings-label">⚡ Reduce Flashing</div>
+                <div class="settings-sublabel">Disables screen flashes and bright pulses</div>
+            </div>
+            <div class="toggle-wrap">
+                <label class="toggle">
+                    <input type="checkbox" id="toggle-noflash" onchange="Settings.toggleNoFlash(this.checked)">
+                    <div class="toggle-track"></div>
+                    <div class="toggle-thumb"></div>
+                </label>
+                <span class="toggle-state" id="noflash-state">OFF</span>
+            </div>
+        </div>
+        <div class="settings-row">
+            <div>
+                <div class="settings-label">⚕ Accessibility Mode</div>
+                <div class="settings-sublabel">Disables chromatic aberration, mimic cursor, vignette, auditory alarms &amp; jarring flashes. Horror preserved through lore only.</div>
+            </div>
+            <div class="toggle-wrap">
+                <label class="toggle">
+                    <input type="checkbox" id="toggle-accessibility" onchange="Settings.toggleAccessibility(this.checked)">
+                    <div class="toggle-track"></div>
+                    <div class="toggle-thumb"></div>
+                </label>
+                <span class="toggle-state" id="accessibility-state">OFF</span>
+            </div>
+        </div>
+
+        <div class="settings-row" id="reduced-motion-row" style="border:1px solid rgba(51,200,255,0.25);border-radius:8px;padding:12px 14px;margin-bottom:4px;background:rgba(0,40,80,0.2);">
+            <div>
+                <div class="settings-label" style="color:#55ccff;">🛡 Reduced Motion / Safe Mode</div>
+                <div class="settings-sublabel">Stops background hue shifts, button flicker, and chromatic aberration. All gameplay mechanics preserved. Ideal for long sessions.</div>
+            </div>
+            <div class="toggle-wrap">
+                <label class="toggle">
+                    <input type="checkbox" id="toggle-safemode" onchange="Settings.toggleSafeMode(this.checked)">
+                    <div class="toggle-track"></div>
+                    <div class="toggle-thumb"></div>
+                </label>
+                <span class="toggle-state" id="safemode-state">OFF</span>
+            </div>
+        </div>
+
+        <div class="settings-row">
+            <div>
+                <div class="settings-label">📺 Disable Terminal CRT Effect</div>
+                <div class="settings-sublabel">Removes chromatic aberration and scanline blur from the Terminal panel. Improves readability during long sessions. Steam Deck recommended.</div>
+            </div>
+            <div class="toggle-wrap">
+                <label class="toggle">
+                    <input type="checkbox" id="toggle-nocrt" onchange="Settings.toggleNoCRT(this.checked)">
+                    <div class="toggle-track"></div>
+                    <div class="toggle-thumb"></div>
+                </label>
+                <span class="toggle-state" id="nocrt-state">OFF</span>
+            </div>
+        </div>
+
+        <div class="settings-row" style="flex-direction:column; align-items:flex-start; gap:10px;">
+            <div>
+                <div class="settings-label">🔢 Number Format</div>
+                <div class="settings-sublabel">How large numbers are displayed</div>
+            </div>
+            <div style="display:flex; gap:8px; flex-wrap:wrap; margin-top:4px;">
+                <button id="fmt-compact" onclick="Settings.setNumFormat('compact')" style="padding:6px 12px; border-radius:5px; cursor:pointer; font-size:0.7rem; letter-spacing:2px; font-family:'Courier New',monospace; transition:0.2s; background:rgba(51,153,255,0.15); border:1px solid rgba(51,153,255,0.5); color:#88ccff;">1.5M</button>
+                <button id="fmt-scientific" onclick="Settings.setNumFormat('scientific')" style="padding:6px 12px; border-radius:5px; cursor:pointer; font-size:0.7rem; letter-spacing:2px; font-family:'Courier New',monospace; transition:0.2s; background:transparent; border:1px solid rgba(255,255,255,0.12); color:#888;">1.50e6</button>
+                <button id="fmt-engineering" onclick="Settings.setNumFormat('engineering')" style="padding:6px 12px; border-radius:5px; cursor:pointer; font-size:0.7rem; letter-spacing:2px; font-family:'Courier New',monospace; transition:0.2s; background:transparent; border:1px solid rgba(255,255,255,0.12); color:#888;">1.50e+6</button>
+            </div>
+        </div>
+
+        </div><!-- end tab 1 -->
+
+        <!-- TAB 2: DATA -->
+        <div class="settings-tab-panel" id="settings-tab-2">
+
+        <div style="margin-top:4px; padding-bottom:14px; border-bottom:1px solid rgba(100,100,200,0.1); margin-bottom:14px;">
+            <div class="settings-label" style="margin-bottom:4px;">Neural Data Core</div>
+            <div class="settings-sublabel" style="margin-bottom:8px;">Backup or restore your run to a portable encoded string</div>
+            <div style="display:flex;gap:8px;margin-bottom:8px;">
+                <button onclick="Settings.exportSave()" style="flex:1;padding:8px 0;background:rgba(0,40,80,0.45);border:1px solid rgba(51,153,255,0.35);color:#6699cc;border-radius:6px;cursor:pointer;font-size:0.62rem;letter-spacing:2px;font-family:'Courier New',monospace;">⬆ EXTRACT NEURAL BACKUP</button>
+                <button onclick="Settings.importSave()" style="flex:1;padding:8px 0;background:rgba(0,30,60,0.4);border:1px solid rgba(51,100,180,0.3);color:#557799;border-radius:6px;cursor:pointer;font-size:0.62rem;letter-spacing:2px;font-family:'Courier New',monospace;">⬇ INJECT NEURAL BACKUP</button>
+            </div>
+            <textarea id="save-export-textarea" rows="3" spellcheck="false" placeholder="// Neural backup string appears here..." style="width:100%;background:rgba(0,5,15,0.8);border:1px solid rgba(50,80,120,0.35);color:#446688;border-radius:5px;padding:6px 8px;font-family:'Courier New',monospace;font-size:0.5rem;resize:vertical;box-sizing:border-box;letter-spacing:1px;"></textarea>
+        </div>
+
+        <div style="margin-bottom:14px;">
+            <div class="settings-label" style="color:#44bb88; margin-bottom:4px;">⟳ Recover Save</div>
+            <div class="settings-sublabel" style="margin-bottom:8px;">Restore from an automatic backup (saves less than 7 days old only)</div>
+            <div id="save-recovery-list" style="display:flex;flex-direction:column;gap:6px;max-height:160px;overflow-y:auto;"></div>
+            <button onclick="Settings.scanRecovery()" style="width:100%;margin-top:6px;padding:7px 0;background:rgba(0,40,25,0.45);border:1px solid rgba(60,180,120,0.3);color:#44aa77;border-radius:6px;cursor:pointer;font-size:0.6rem;letter-spacing:2px;font-family:'Courier New',monospace;">🔍 SCAN FOR RECOVERABLE SAVES</button>
+        </div>
+
+        </div><!-- end tab 2 -->
+
+        <!-- TAB 3: DANGER -->
+        <div class="settings-tab-panel" id="settings-tab-3">
+
+        <div style="margin-top:4px; padding-bottom:18px; border-bottom:1px solid rgba(255,50,50,0.12); margin-bottom:14px;">
+            <div class="settings-label" style="color:#cc4444;">Danger Zone</div>
+            <div class="settings-sublabel" style="margin-bottom:10px;">Permanently erase all data for this player account</div>
+            <button id="settings-wipe-btn" onclick="Settings.wipeAllData()" style="
+                width:100%; padding:10px 0; background:rgba(80,0,0,0.4);
+                border:1px solid rgba(200,50,50,0.4); color:#ff6666;
+                border-radius:6px; cursor:pointer; font-size:0.75rem;
+                letter-spacing:3px; text-transform:uppercase; transition:0.2s;
+                font-family:'Courier New',monospace;">
+                ☠ WIPE ALL PLAYER DATA
+            </button>
+        </div>
+
+        <div style="margin-bottom:10px;">
+            <button id="coping-toggle-btn" onclick="if(window.CognitiveDenial)CognitiveDenial.toggle()" style="width:100%;padding:9px 14px;background:rgba(10,5,15,0.8);border:1px solid rgba(255,150,200,0.4);border-radius:7px;color:#ff99cc;font-family:'Courier New',monospace;font-size:0.52rem;letter-spacing:2px;cursor:pointer;transition:border-color 0.2s,color 0.2s;">
+                🌸 ACTIVATE COPING MECHANISM
+            </button>
+            <div style="font-size:0.36rem;color:#443344;margin-top:3px;letter-spacing:1px;text-align:center;">Pastel safe-room · zero instability · drains energy fast</div>
+        </div>
+
+        </div><!-- end tab 3 -->
+
+        <button id="settings-close-btn" onclick="Settings.close()">CLOSE</button>
+    </div>
+</div>
+
+   <div id="home-screen">
+    <!-- Boot sequence overlay — shown after new game start -->
+    <div id="boot-sequence" style="display:none;position:fixed;inset:0;background:#000;z-index:50000;overflow-y:auto;padding:60px clamp(20px,8vw,120px);font-family:'Courier New',monospace;line-height:1.9;cursor:pointer;">
+        <div id="boot-text" style="max-width:680px;margin:0 auto;"></div>
+    </div>
+    <div id="welcome-banner">WELCOME BACK, <span id="banner-username">OPERATOR</span></div>
+
+    <div class="logo-container">
+        <h1 class="neon-title">JUST A CLICKER GAME</h1>
+        <div class="neon-subtitle">NOTHING SPECIAL HERE</div>
+    </div>
+
+    <div class="menu-container">
+        <button class="main-menu-btn btn-pulse" onmouseenter="Sounds.hover()" onclick="Sounds.menuClick(); Menu.accessibilityPrompt()">New Game</button>
+        <button class="main-menu-btn" onmouseenter="Sounds.hover()" onclick="Sounds.menuClick(); Menu.showLoadScreen()">Load Game</button>
+        <button class="main-menu-btn" onmouseenter="Sounds.hover()" onclick="Sounds.menuClick(); Settings.open()">Settings</button>
+        <button class="main-menu-btn" onmouseenter="Sounds.hover()" onclick="Sounds.menuClick(); Menu.showCredits()" style="color:#cc99ff; border-color:rgba(180,100,255,0.35);">Credits</button>
+        <button class="main-menu-btn" onmouseenter="Sounds.hover()" onclick="Sounds.menuClick(); Achieve.openPanel(true)" style="color:#ffcc44; border-color:rgba(255,200,50,0.35);">⬡ Achievements</button>
+        <button class="main-menu-btn" onmouseenter="Sounds.hover()" onclick="Sounds.menuClick(); if(confirm('⬛ LOGOUT FROM TERMINAL\n\nSave progress and exit to OS?\n\nYour run will be preserved and restored on next launch.')) { if(window.Game) Game.save(); setTimeout(function(){ window.close(); setTimeout(function(){ if(!window.closed) showNotif('⬛ Save complete — close this tab manually to exit.', '#ff8888', 8000); }, 400); }, 300); }" style="color:#ff6666; border-color:rgba(255,80,80,0.3);">Exit to OS</button>
+    </div>
+
+    <div id="slot-list" class="slot-container" style="display:none; max-height:260px; overflow-y:auto;"></div>
+    <div class="version-tag">BETA V1.20.5.0</div>
+</div>
+
+<!-- ACCESSIBILITY PROMPT OVERLAY -->
+<div id="accessibility-prompt-overlay" style="display:none;position:fixed;inset:0;z-index:12000;background:rgba(0,0,0,0.92);backdrop-filter:blur(8px);flex-direction:column;align-items:center;justify-content:center;font-family:'Courier New',monospace;">
+    <div style="max-width:480px;width:92%;background:linear-gradient(160deg,#040014,#02000a);border:1px solid rgba(51,153,255,0.4);border-top:2px solid rgba(68,180,255,0.6);border-radius:16px;padding:36px 40px;text-align:center;box-shadow:0 0 80px rgba(0,100,255,0.3);">
+        <div style="font-size:2rem;margin-bottom:12px;filter:drop-shadow(0 0 12px rgba(68,160,255,0.8));">⬡</div>
+        <div style="font-size:1.1rem;font-weight:900;letter-spacing:6px;color:#fff;margin-bottom:6px;text-transform:uppercase;">SIMULATION NOTICE</div>
+        <div style="font-size:0.55rem;letter-spacing:3px;color:#2244aa;margin-bottom:22px;">// PRE-BOOT ACCESSIBILITY CONFIGURATION</div>
+        <div style="font-size:0.78rem;color:#7799bb;line-height:1.8;margin-bottom:24px;text-align:left;">
+            This simulation contains <span style="color:#aabbcc;">intense visual effects</span> including screen flashes, CRT distortion, chromatic glitches, and animated backgrounds.<br><br>
+            Would you like to enable <span style="color:#88ccff;font-weight:bold;">Reduced Motion Mode</span>? This disables disruptive visual effects while preserving the full game atmosphere and horror narrative.
+        </div>
+        <div style="display:grid;grid-template-columns:1fr 1fr;gap:12px;margin-bottom:16px;">
+            <button onclick="Menu.startWithAccessibility(true)" style="padding:14px 8px;background:linear-gradient(135deg,rgba(0,80,160,0.6),rgba(0,120,220,0.4));border:1px solid rgba(51,153,255,0.6);color:#88ccff;font-family:'Courier New',monospace;font-size:0.7rem;letter-spacing:2px;cursor:pointer;border-radius:10px;transition:all 0.2s;line-height:1.5;" onmouseover="this.style.background='rgba(51,153,255,0.25)'" onmouseout="this.style.background='linear-gradient(135deg,rgba(0,80,160,0.6),rgba(0,120,220,0.4))'">
+                ♿ REDUCED MOTION<br><span style="font-size:0.55rem;color:#446688;display:block;margin-top:4px;">Calm & accessible</span>
+            </button>
+            <button onclick="Menu.startWithAccessibility(false)" style="padding:14px 8px;background:linear-gradient(135deg,rgba(40,0,80,0.6),rgba(80,0,160,0.4));border:1px solid rgba(120,60,255,0.5);color:#cc99ff;font-family:'Courier New',monospace;font-size:0.7rem;letter-spacing:2px;cursor:pointer;border-radius:10px;transition:all 0.2s;line-height:1.5;" onmouseover="this.style.background='rgba(120,60,255,0.25)'" onmouseout="this.style.background='linear-gradient(135deg,rgba(40,0,80,0.6),rgba(80,0,160,0.4))'">
+                ⚡ FULL EXPERIENCE<br><span style="font-size:0.55rem;color:#664488;display:block;margin-top:4px;">All effects enabled</span>
+            </button>
+        </div>
+        <div style="font-size:0.5rem;color:#1a2a3a;letter-spacing:2px;">This setting can be changed at any time in Settings → Reduced Motion</div>
+    </div>
+</div>
+
+<!-- CREDITS OVERLAY -->
+<div id="credits-overlay" style="display:none; position:fixed; inset:0; background:rgba(0,0,0,0.94); z-index:10000; flex-direction:column; align-items:center; justify-content:center; overflow-y:auto; padding:32px 16px;">
+    <div style="max-width:640px; width:100%; background:linear-gradient(160deg,rgba(10,4,28,0.99),rgba(4,0,14,0.99)); border:1px solid rgba(180,100,255,0.4); border-radius:20px; padding:52px 48px; text-align:center; box-shadow: 0 0 80px rgba(120,60,255,0.2), inset 0 0 60px rgba(80,0,160,0.08);">
+
+        <!-- Studio Banner -->
+        <div style="font-size:4rem; margin-bottom:10px; filter:drop-shadow(0 0 20px rgba(255,180,60,0.4));">🦊</div>
+        <div style="font-size:0.7rem; color:#7744aa; letter-spacing:7px; text-transform:uppercase; margin-bottom:8px;">PRESENTED BY</div>
+        <div style="font-size:2.4rem; font-weight:900; color:#fff; letter-spacing:6px; text-shadow:0 0 30px rgba(51,153,255,0.7), 0 0 60px rgba(51,153,255,0.3); margin-bottom:8px;">MOCHI FOX GAMES</div>
+        <div style="font-size:0.75rem; color:#3a5577; letter-spacing:4px; margin-bottom:36px;">mochifoxgames.com</div>
+
+        <div style="height:1px; background:linear-gradient(90deg,transparent,rgba(180,100,255,0.5),transparent); margin-bottom:36px;"></div>
+
+        <!-- Game Title -->
+        <div style="font-size:0.72rem; color:#7744aa; letter-spacing:5px; text-transform:uppercase; margin-bottom:8px;">NEURAL LINK ARCHIVE</div>
+        <div style="font-size:2rem; font-weight:900; color:#cc88ff; letter-spacing:8px; text-shadow:0 0 25px rgba(180,80,255,0.6); margin-bottom:36px;">NEON NEXUS</div>
+
+        <!-- Dev Team -->
+        <div style="border:1px solid rgba(180,100,255,0.25); border-radius:14px; padding:28px 24px; background:rgba(30,0,60,0.5); margin-bottom:28px;">
+            <div style="font-size:0.7rem; color:#6644aa; letter-spacing:5px; text-transform:uppercase; margin-bottom:22px;">GAME DEVELOPMENT</div>
+            <div style="display:flex; flex-direction:column; gap:14px;">
+                <div style="padding:16px 20px; background:rgba(50,0,100,0.35); border:1px solid rgba(140,80,255,0.25); border-radius:10px;">
+                    <div style="font-size:1.2rem; color:#dd99ff; font-weight:900; letter-spacing:4px; margin-bottom:6px;">✦ GEMINI</div>
+                    <div style="font-size:0.85rem; color:#9977aa; line-height:1.7; letter-spacing:0.5px;">Visual Asset Creation &amp; Graphic Generation · Narrative Writing &amp; Lore Development · Creative Direction &amp; Design Critique · Conceptual Architecture &amp; Initial Structuring</div>
+                </div>
+                <div style="padding:16px 20px; background:rgba(0,40,80,0.35); border:1px solid rgba(80,160,255,0.25); border-radius:10px;">
+                    <div style="font-size:1.2rem; color:#88ccff; font-weight:900; letter-spacing:4px; margin-bottom:6px;">✦ CLAUDE</div>
+                    <div style="font-size:0.85rem; color:#5588aa; line-height:1.7; letter-spacing:0.5px;">Core Feature Engineering &amp; Systems Architecture · Mid-Development Lead · Game Mechanics Design &amp; Iterative Refinement</div>
+                </div>
+                <div style="padding:16px 20px; background:rgba(0,40,80,0.35); border:1px solid rgba(80,160,255,0.25); border-radius:10px;">
+                    <div style="font-size:1.2rem; color:#88ccff; font-weight:900; letter-spacing:4px; margin-bottom:6px;">✦ CLAUDE CODE</div>
+                    <div style="font-size:0.85rem; color:#5588aa; line-height:1.7; letter-spacing:0.5px;">Primary Codebase Authorship · Technical Debugging &amp; Quality Assurance · Performance Optimisation &amp; Code Architecture</div>
+                </div>
+                <div style="padding:16px 20px; background:rgba(0,25,50,0.35); border:1px solid rgba(40,180,255,0.2); border-radius:10px;">
+                    <div style="font-size:1.2rem; color:#66ddff; font-weight:900; letter-spacing:4px; margin-bottom:6px;">✦ GOOGLE FLOW</div>
+                    <div style="font-size:0.85rem; color:#3a7799; line-height:1.7; letter-spacing:0.5px;">Cinematic Motion Sequence Generation &amp; Pre-Rendered Video Production · Advanced Photographic Asset Synthesis &amp; High-Fidelity Visual Editing · Splash Screen Cinematography &amp; Loading Sequence Authoring</div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Playtesting -->
+        <div style="border:1px solid rgba(60,180,140,0.25); border-radius:14px; padding:28px 24px; background:rgba(0,40,30,0.45); margin-bottom:28px;">
+            <div style="font-size:0.7rem; color:#338866; letter-spacing:5px; text-transform:uppercase; margin-bottom:22px;">PLAYTESTING &amp; CRITICAL EVALUATION</div>
+            <div style="display:flex; flex-direction:column; gap:14px;">
+                <div style="padding:16px 20px; background:rgba(0,50,35,0.4); border:1px solid rgba(60,180,140,0.25); border-radius:10px;">
+                    <div style="font-size:1.2rem; color:#66ddaa; font-weight:900; letter-spacing:4px; margin-bottom:6px;">✦ GOOGLE ANTIGRAVITY</div>
+                    <div style="font-size:0.85rem; color:#3d8866; line-height:1.7; letter-spacing:0.5px;">Independent Beta Evaluation &amp; Multi-Session Playtesting · Iterative Gameplay Feedback &amp; Progression Analysis · UI/UX Assessment &amp; Systemic Design Critique · Steam Readiness Consultation</div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Quote -->
+        <div style="font-size:0.9rem; color:#554466; letter-spacing:2px; line-height:2; margin-bottom:28px; font-style:italic; padding:0 12px;">
+            "The universe was not destroyed in a bang.<br>It was simply... consumed. Efficiently."
+        </div>
+
+        <div style="height:1px; background:linear-gradient(90deg,transparent,rgba(180,100,255,0.2),transparent); margin-bottom:24px;"></div>
+
+        <div style="font-size:0.75rem; color:#443355; letter-spacing:3px; margin-bottom:8px;">© MOCHI FOX GAMES</div>
+        <div style="font-size:0.7rem; color:#332244; letter-spacing:2px; margin-bottom:32px;">VERSION BETA V1.20.4.2</div>
+
+        <!-- AI Disclosure (Steam Compliance) -->
+        <div style="border:1px solid rgba(100,80,160,0.3); border-radius:12px; padding:20px 22px; background:rgba(20,10,40,0.6); margin-bottom:28px; text-align:left;">
+            <div style="font-size:0.62rem; color:#6644aa; letter-spacing:5px; text-transform:uppercase; margin-bottom:14px; text-align:center;">⬡ AI CONTENT DISCLOSURE</div>
+            <div style="font-size:0.72rem; color:#776688; line-height:1.8; letter-spacing:0.5px;">
+                This game was developed with AI tool assistance. <strong style="color:#dd99ff;">Gemini</strong> (Google) was used for graphic asset generation, concept art, narrative text drafting, design review, critique, and initial structural planning. <strong style="color:#88ccff;">Claude</strong> and <strong style="color:#88ccff;">Claude Code</strong> (Anthropic) were used throughout mid and late development for code architecture, system design, feature implementation, iterative refinement, and debugging. All lore, mechanics, story, art, and game systems are pre-authored and fully static. <strong style="color:#aabbcc;">No AI processing or generation occurs at runtime</strong> — the game runs entirely on pre-built code with no live model calls. This disclosure is provided in compliance with Steam's AI Content Policy and Valve developer transparency guidelines.
+            </div>
+        </div>
+
+        <button onclick="document.getElementById('credits-overlay').style.display='none'" style="padding:14px 48px; background:linear-gradient(135deg,rgba(100,0,160,0.65),rgba(160,60,255,0.45)); border:1px solid rgba(180,100,255,0.45); color:#dd99ff; border-radius:10px; cursor:pointer; letter-spacing:4px; font-size:0.88rem; text-transform:uppercase; transition:all 0.2s; font-family:'Courier New',monospace;" onmouseover="this.style.background='linear-gradient(135deg,rgba(140,0,220,0.75),rgba(200,80,255,0.55))'; this.style.boxShadow='0 0 30px rgba(160,80,255,0.4)'" onmouseout="this.style.background='linear-gradient(135deg,rgba(100,0,160,0.65),rgba(160,60,255,0.45))'; this.style.boxShadow='none'">⬡ CLOSE</button>
+    </div>
+</div>
+
+<!-- END GAME OVERLAY -->
+<!-- CINEMATIC END SEQUENCE -->
+<div id="endgame-overlay">
+    <canvas id="end-bg-canvas"></canvas>
+    <div id="end-seq-glitch" class="end-seq-phase">
+        <div id="end-glitch-bars">
+            <div class="glitch-bar" style="top:12%"></div>
+            <div class="glitch-bar" style="top:34%"></div>
+            <div class="glitch-bar" style="top:56%"></div>
+            <div class="glitch-bar" style="top:78%"></div>
+            <div class="glitch-bar" style="top:91%"></div>
+        </div>
+        <div id="end-glitch-msg">CRITICAL ERROR</div>
+        <div id="end-glitch-sub">REALITY.EXE HAS STOPPED RESPONDING</div>
+    </div>
+    <div id="end-seq-title" class="end-seq-phase">
+        <div id="end-word-the">THE</div>
+        <div id="end-word-end">END</div>
+    </div>
+    <div id="end-seq-stats" class="end-seq-phase">
+        <div id="end-stats-inner">
+            <div id="end-stats-title">— YOUR LEGACY —</div>
+        </div>
+    </div>
+    <div id="end-seq-scroll" class="end-seq-phase">
+        <div id="end-scroll-wrapper">
+            <div id="end-scroll-inner"></div>
+        </div>
+    </div>
+    <div id="end-seq-chapters" class="end-seq-phase">
+        <div id="end-chapter-title" style="font-family:'Courier New',monospace;font-size:clamp(0.55rem,1.2vw,0.7rem);letter-spacing:6px;color:#1a4466;text-transform:uppercase;margin-bottom:28px;min-height:1.2em;"></div>
+        <div id="end-chapter-body" style="font-family:'Courier New',monospace;font-size:clamp(0.9rem,2.2vw,1.12rem);color:#c8dde8;line-height:2.1;max-width:640px;text-align:center;letter-spacing:0.4px;min-height:8em;word-break:break-word;overflow-y:auto;max-height:60vh;"></div>
+        <div id="end-chapter-counter" style="margin-top:40px;font-size:0.48rem;letter-spacing:4px;color:#112233;font-family:'Courier New',monospace;"></div>
+    </div>
+    <div id="end-seq-final" class="end-seq-phase" style="flex-direction:column;align-items:center;justify-content:center;pointer-events:auto;">
+        <div id="end-final-fox">🦊</div>
+        <div id="end-final-logo">MOCHI FOX GAMES</div>
+        <div id="end-final-tagline">You reached the end of everything.</div>
+        <div id="end-final-sub">The universe has been consumed. Well done.</div>
+        <div id="end-final-buttons">
+            <button class="endgame-close" onclick="EndSeq.close()">✦ CONTINUE PLAYING ✦</button>
+            <button class="endgame-close" style="border-color:#ff6666;color:#ff8888;" onclick="EndSeq.close(); Menu.returnToHome();">⌂ EXIT TO HOME</button>
+        </div>
+    </div>
+</div>
+
+<!-- ACHIEVEMENT TOAST LAYER -->
+<div id="achieve-toast-layer" style="position:fixed;top:0;right:0;bottom:0;width:340px;pointer-events:none;z-index:8000;overflow:hidden;"></div>
+
+<!-- Unified right-side notification column -->
+<div id="notif-col">
+    <!-- Log toggle button — opens the rolling notification history drawer -->
+    <button id="notif-log-btn" onclick="NotifLog.toggle()" title="View notification history (last 30 events)">📋</button>
+    <div id="world-event-ticker"></div>
+    <!-- Controlled Overload — lives inside notif-col so it flows with other messages -->
+    <div id="overload-btn-wrap">
+        <button id="overload-btn" onclick="ControlledOverload.trigger()">
+            <div id="overload-cooldown-bar"></div>
+            <span id="overload-label">&#x26A1; CONTROLLED OVERLOAD</span>
+        </button>
+        <div id="overload-status"></div>
+    </div>
+</div>
+
+<!-- Notification log drawer -->
+<div id="notif-log-drawer" aria-label="Notification history">
+    <div id="notif-log-header">
+        <span>📋 EVENT LOG</span>
+        <button onclick="NotifLog.toggle()" aria-label="Close log">✕</button>
+    </div>
+    <div id="notif-log-list"></div>
+</div>
+<!-- ACHIEVEMENT PANEL OVERLAY -->
+<div id="achieve-overlay" style="display:none;">
+    <div id="achieve-modal">
+        <div id="achieve-modal-header">
+            <div>
+                <span id="achieve-modal-title">⬡ ACHIEVEMENTS</span>
+                <button id="achieve-close-btn" aria-label="Close Achievements" onclick="(function(){const o=document.getElementById('achieve-overlay');const btn=document.getElementById('nav-btn-achieve');if(o){o.style.display='none';o.classList.remove('open');}if(btn){btn.classList.remove('active');btn.classList.remove('nav-has-unlock');}})()">✕</button>
+            </div>
+            <div id="achieve-prog-wrap"><div id="achieve-prog-bar"></div></div>
+            <span id="achieve-prog-label"></span>
+            <!-- Mastery bonus callout — explains why achievements matter mechanically -->
+            <div id="achieve-mastery-callout" title="Each unlocked achievement permanently adds +1% to all energy production. Earn more achievements to compound your output.">
+                <span id="achieve-mastery-callout-val">+0%</span> ALL PRODUCTION BONUS FROM ACHIEVEMENTS <span style="opacity:0.45;">ⓘ</span>
+            </div>
+        </div>
+        <div id="achieve-list-wrap">
+            <div id="achieve-list"></div>
+        </div>
+    </div>
+</div>
+
+<!-- BURST OVERLAY -->
+<div id="burst-overlay"></div>
+<div id="burst-timer">⚡ BURST ×5</div>
+
+<!-- PRESTIGE OVERLAY -->
+<div id="prestige-overlay">
+    <div class="prestige-modal">
+        <div class="prestige-title">⬡ PRESTIGE</div>
+        <div class="prestige-sub" id="prestige-sub-text">RESET PROGRESS · EARN PERMANENT POWER</div>
+        <div class="prestige-stats" id="prestige-stats-row"></div>
+
+        <!-- PHASE 1: Pay energy to unlock tree -->
+        <div class="prestige-phase active" id="prestige-phase-1">
+            <div class="prestige-pay-card">
+                <div style="font-size:0.7rem;color:#886699;letter-spacing:3px;text-transform:uppercase;">Energy Required to Prestige</div>
+                <div class="prestige-pay-cost" id="prestige-pay-cost-display">—</div>
+                <!-- COLLAPSE PREVIEW — LP earned & consequences -->
+                <div style="background:rgba(0,20,40,0.5);border:1px solid rgba(100,60,180,0.3);border-radius:8px;padding:12px 16px;margin:10px 0 8px;font-family:'Courier New',monospace;">
+                    <div style="font-size:0.58rem;letter-spacing:3px;color:#5544aa;text-transform:uppercase;margin-bottom:10px;">⬡ COLLAPSE PREVIEW</div>
+                    <div style="display:flex;gap:16px;flex-wrap:wrap;justify-content:center;margin-bottom:8px;">
+                        <div style="text-align:center;">
+                            <div style="font-size:0.5rem;letter-spacing:2px;color:#334455;margin-bottom:3px;">CURRENT LP</div>
+                            <div id="pp-current-lp" style="font-size:1.2rem;font-weight:900;color:#aa88ff;">0</div>
+                        </div>
+                        <div style="text-align:center;color:#223344;font-size:1.2rem;padding-top:8px;">+</div>
+                        <div style="text-align:center;">
+                            <div style="font-size:0.5rem;letter-spacing:2px;color:#334455;margin-bottom:3px;">
+                                PRESTIGE BONUS
+                                <span title="LP BONUS FORMULA&#10;─────────────────&#10;Earned from manual clicks during this run.&#10;Every 1,000 clicks = +1 LP bonus.&#10;&#10;Click more before prestiging to earn&#10;more LP from this bonus slot.&#10;&#10;LP stacks permanently — you keep all LP&#10;from every prestige run." style="cursor:help;opacity:0.6;font-size:0.9em;"> ⓘ</span>
+                            </div>
+                            <div id="pp-bonus-lp" style="font-size:1.2rem;font-weight:900;color:#cc99ff;">+0</div>
+                        </div>
+                        <div style="text-align:center;color:#223344;font-size:1.2rem;padding-top:8px;">=</div>
+                        <div style="text-align:center;">
+                            <div style="font-size:0.5rem;letter-spacing:2px;color:#334455;margin-bottom:3px;">TOTAL AFTER</div>
+                            <div id="pp-total-lp" style="font-size:1.2rem;font-weight:900;color:#ffaaff;">0</div>
+                        </div>
+                    </div>
+                    <div style="border-top:1px solid rgba(100,60,180,0.2);padding-top:8px;font-size:0.58rem;color:#443355;letter-spacing:1px;line-height:1.6;text-align:center;">
+                        ⚠ This will erase all Energy · Generators · Combo state<br>
+                        City buildings, LP, and tree upgrades are preserved.
+                    </div>
+                </div>
+                <div class="prestige-pay-list">
+                    <div class="keep-item">✓ Level Points</div>
+                    <div class="keep-item">✓ All Tree Upgrades</div>
+                    <div class="keep-item">✓ City Buildings</div>
+                    <div class="keep-item">✓ All-Time High Score</div>
+                    <div class="lose-item">✗ All Energy</div>
+                    <div class="lose-item" id="prestige-lose-items-label">✗ All Shop Items</div>
+                </div>
+                <!-- PRESTIGE PREVIEW -->
+                <div id="prestige-preview-box">
+                    <div class="prestige-preview-title">⬡ WHAT YOU COULD BUY WITH YOUR LP</div>
+                    <div id="prestige-preview-content"></div>
+                </div>
+                <button class="prestige-pay-btn" id="prestige-pay-btn" onclick="Prestige._confirmPay()">⬡ PAY &amp; PRESTIGE</button>
+            </div>
+        </div>
+
+        <!-- PHASE 2: Spend LP on tree (shown after paying) -->
+        <div class="prestige-phase" id="prestige-phase-2">
+            <div class="prestige-pending-banner">
+                <div class="prestige-pending-dot"></div>
+                <div class="prestige-pending-text">PRESTIGE PAID — Spend your Level Points below, then confirm to apply your new run. <span style="color:#ffaa44;font-size:0.65em;">⚠ This resets your energy/generators but keeps permanent upgrades and multipliers you've spent LP on.</span></div>
+            </div>
+            <div class="tree-section-label">⬡ THE NEURAL PATH</div>
+            <div id="neural-tree-container"></div>
+            <button class="prestige-confirm-btn" onclick="Prestige.confirmReset()">⚡ CONFIRM &amp; BEGIN NEW RUN</button>
+            <button class="prestige-refund-btn" onclick="Prestige.refundPrestige()">↩ CANCEL &amp; REFUND ENERGY</button>
+        </div>
+
+        <button class="prestige-close-btn" id="prestige-close-btn" onclick="Sounds.hover(); Prestige.closeModal()">CLOSE</button>
+    </div>
+</div>
+
+<div id="load-overlay" style="display:none; position:absolute; top:0; left:0; width:100%; height:100%; background:rgba(0,0,0,0.95); z-index:200; flex-direction:column; align-items:center; justify-content:center;">
+    <h2 style="color:#fff; letter-spacing:6px; margin-bottom:40px; text-shadow:0 0 20px #3399ff;">SELECT NEURAL LINK</h2>
+    
+    <div id="save-list" style="width: 500px; max-height: 65vh; overflow-y: auto;">
+        </div>
+
+    <button class="main-menu-btn" onmouseenter="Sounds.hover()" onclick="Sounds.menuClick(); document.getElementById('load-overlay').style.display='none'" style="margin-top:30px; width:200px; text-align:center;">Back</button>
+</div>
+
+    <div id="main-game">
+        <!-- PRESTIGE CINEMATIC OVERLAY -->
+        <div id="prestige-flash-overlay"></div>
+        <div id="prestige-run-banner">
+            <div style="font-size:0.55rem;letter-spacing:6px;color:#cc88ff;margin-bottom:4px;">⬢ NEURAL LINK RESET</div>
+            <div id="prestige-run-title" style="font-size:1.1rem;font-weight:900;letter-spacing:4px;color:#fff;">RUN #<span id="prestige-run-num">1</span> INITIATED</div>
+            <div id="prestige-run-sub" style="font-size:0.58rem;letter-spacing:3px;color:#6677aa;margin-top:3px;"></div>
+        </div>
+        <!-- MILESTONE POPUP -->
+        <div id="milestone-popup" style="display:none;">
+            <div id="milestone-popup-inner">
+                <div id="milestone-popup-icon" style="font-size:2rem;margin-bottom:6px;"></div>
+                <div id="milestone-popup-title" style="font-size:0.75rem;letter-spacing:5px;color:#aaccee;font-family:'Courier New',monospace;font-weight:900;"></div>
+                <div id="milestone-popup-sub" style="font-size:0.58rem;letter-spacing:2px;color:#334455;font-family:'Courier New',monospace;margin-top:4px;"></div>
+            </div>
+        </div>
+        <!-- EARLY EVENT BANNER -->
+        <div id="early-event-banner">
+            <div id="early-event-label" style="font-size:0.65rem;font-weight:900;letter-spacing:3px;color:#44ffaa;"></div>
+            <div id="early-event-sub" style="font-size:0.52rem;letter-spacing:2px;color:#335544;margin-top:2px;"></div>
+        </div>
+        <!-- META-AWARENESS COMMENTARY -->
+        <div id="meta-comment"></div>
+
+        <!-- ═══════════ GLITCH MARKET OVERLAY ═══════════ -->
+        <div id="glitch-market-overlay" style="display:none;position:fixed;inset:0;z-index:9750;background:rgba(0,0,0,0.88);align-items:center;justify-content:center;flex-direction:column;">
+            <div style="background:rgba(8,3,0,0.99);border:2px solid rgba(255,60,20,0.45);border-top:3px solid #ff4422;border-radius:12px;padding:24px 28px;max-width:440px;width:92%;font-family:'Courier New',monospace;">
+                <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:4px;">
+                    <div>
+                        <div style="font-size:0.45rem;letter-spacing:5px;color:#882200;margin-bottom:4px;">⚠ CORRUPTED COMMERCE NODE</div>
+                        <div style="font-size:1.1rem;font-weight:900;letter-spacing:4px;color:#ff5533;">GLITCH MARKET</div>
+                    </div>
+                    <button onclick="GlitchMarket.close()" style="background:rgba(255,50,20,0.1);border:1px solid rgba(255,60,20,0.3);color:#ff5533;padding:4px 10px;border-radius:5px;cursor:pointer;font-family:'Courier New',monospace;font-size:0.6rem;letter-spacing:1px;">CLOSE ✕</button>
+                </div>
+                <div style="font-size:0.58rem;color:#552211;letter-spacing:1px;margin-bottom:14px;line-height:1.5;">The normal market has been corrupted. These upgrades cost <strong style="color:#ff6644;">instability</strong> instead of energy. The market closes when stock runs out.</div>
+                <div id="glitch-market-items"></div>
+            </div>
+        </div>
+
+        <!-- ═══════════ DUCKY COUNCIL OVERLAY ═══════════ -->
+        <div id="ducky-council-overlay" style="display:none;position:fixed;inset:0;z-index:9800;background:rgba(0,0,0,0.88);align-items:center;justify-content:flex-start;flex-direction:column;overflow-y:auto;padding:32px 16px 48px;">
+            <div id="ducky-council-modal" style="background:rgba(5,8,15,0.98);border:2px solid rgba(255,220,50,0.35);border-radius:12px;padding:28px 32px;max-width:520px;width:92%;text-align:center;font-family:'Courier New',monospace;">
+                <div style="font-size:0.45rem;letter-spacing:6px;color:#886600;margin-bottom:8px;">EMERGENCY SESSION — CLASSIFIED</div>
+                <div style="font-size:1.3rem;font-weight:900;letter-spacing:4px;color:#ffdd33;margin-bottom:4px;">THE DUCKY COUNCIL</div>
+                <div style="font-size:0.5rem;letter-spacing:3px;color:#554400;margin-bottom:18px;">CONVENED TO EVALUATE YOUR PERFORMANCE</div>
+                <div id="ducky-council-ducks" style="display:flex;justify-content:center;gap:12px;margin-bottom:18px;flex-wrap:wrap;"></div>
+                <div id="ducky-council-verdict" style="font-size:0.7rem;letter-spacing:2px;color:#aabb88;min-height:40px;margin-bottom:14px;line-height:1.6;"></div>
+                <div id="ducky-council-reward" style="font-size:0.75rem;letter-spacing:3px;color:#ffdd33;font-weight:900;min-height:24px;margin-bottom:18px;"></div>
+                <button onclick="DuckyCouncil.dismiss()" style="background:rgba(255,220,50,0.1);border:1px solid rgba(255,220,50,0.4);color:#ffdd33;padding:8px 24px;border-radius:6px;font-family:'Courier New',monospace;font-size:0.6rem;letter-spacing:3px;cursor:pointer;">ACCEPT JUDGEMENT</button>
+            </div>
+        </div>
+
+        <!-- ═══════════ FAKE CRASH OVERLAY ═══════════ -->
+        <div id="fake-crash-overlay" style="display:none;position:fixed;inset:0;z-index:9900;background:#0000aa;font-family:'Courier New',monospace;padding:40px;color:white;flex-direction:column;justify-content:center;">
+            <div style="font-size:1.4rem;font-weight:900;margin-bottom:20px;">:(</div>
+            <div style="font-size:0.9rem;font-weight:900;margin-bottom:16px;line-height:1.5;" id="fake-crash-title">Your simulation ran into a problem and needs to restart.<br>We're just collecting some error info for you.</div>
+            <div style="font-size:3rem;font-weight:900;margin-bottom:20px;" id="fake-crash-pct">0%</div>
+            <div style="font-size:0.6rem;color:#8888ff;margin-bottom:24px;line-height:2;" id="fake-crash-info"></div>
+            <div style="font-size:0.55rem;color:#6666cc;">For more information about this issue and possible fixes, visit<br>https://simulation.local/error/TOO_MANY_CLICKS</div>
+            <div id="fake-crash-bonus" style="display:none;position:absolute;bottom:40px;right:40px;font-size:0.65rem;color:#44ff88;letter-spacing:2px;animation:pulsate 0.6s ease-in-out infinite alternate;"></div>
+        </div>
+
+        <!-- ═══════════ PATCH NOTES MODAL ═══════════ -->
+        <div id="patch-notes-overlay" style="display:none;position:fixed;inset:0;z-index:9700;background:rgba(0,0,0,0.85);align-items:center;justify-content:center;">
+            <div style="background:rgba(3,6,12,0.99);border:1px solid rgba(100,200,100,0.25);border-radius:10px;padding:0;max-width:500px;width:94%;max-height:80vh;overflow:hidden;display:flex;flex-direction:column;">
+                <div style="padding:16px 20px;border-bottom:1px solid rgba(100,200,100,0.1);display:flex;justify-content:space-between;align-items:center;flex-shrink:0;">
+                    <div>
+                        <div style="font-size:0.45rem;letter-spacing:5px;color:#446644;font-family:'Courier New',monospace;">SIMULATION CHANGELOG</div>
+                        <div style="font-size:0.85rem;font-weight:900;letter-spacing:3px;color:#88cc88;font-family:'Courier New',monospace;">PATCH NOTES</div>
+                    </div>
+                    <button onclick="document.getElementById('patch-notes-overlay').style.display='none'" style="background:none;border:1px solid #334433;color:#558855;padding:4px 10px;border-radius:4px;font-family:'Courier New',monospace;cursor:pointer;font-size:0.7rem;">✕</button>
+                </div>
+                <div id="patch-notes-content" style="overflow-y:auto;padding:20px;font-family:'Courier New',monospace;font-size:0.58rem;line-height:2;color:#556644;"></div>
+            </div>
+        </div>
+
+        <!-- ═══════════ BUTTON FEELINGS SPEECH BUBBLE ═══════════ -->
+        <div id="btn-feelings" style="display:none;position:absolute;z-index:9200;pointer-events:none;max-width:200px;background:rgba(5,8,15,0.95);border:1px solid rgba(180,160,255,0.3);border-radius:8px;padding:8px 12px;font-family:'Courier New',monospace;font-size:0.52rem;color:#9988cc;line-height:1.5;text-align:center;animation:btnFeelingsFade 3.8s ease-in-out forwards;"></div>
+
+        <div class="monitor-grid-wrap">
+        <div class="monitor-grid">
+
+            <div class="monitor center-panel">
+
+                <!-- ── TOP: Energy header ─────────────────────────── -->
+                <div style="width:100%;display:flex;justify-content:space-between;align-items:center;margin-bottom:2px;flex-shrink:0;padding:0 2px;">
+                    <div style="font-size:0.46rem;color:#2a3d50;letter-spacing:4px;text-transform:uppercase;font-family:'Courier New',monospace;">ACCUMULATED ENERGY</div>
+                    <div id="day-night-indicator" style="font-size:0.48rem;letter-spacing:3px;color:#445566;transition:color 2s;">🌙 NIGHT</div>
+                </div>
+                <div id="energy-display" style="flex-shrink:0;text-align:center;">0</div>
+                <!-- Energy section bottom rule -->
+                <div style="width:100%;height:1px;background:linear-gradient(90deg,transparent,rgba(51,153,255,0.18),transparent);margin:6px 0 0;flex-shrink:0;"></div>
+
+                <!-- ── MIDDLE: ACQUIRE button + combo in flex-stretch zone ── -->
+                <div id="btn-section">
+                <div id="click-btn-wrap">
+                    <div id="btn-mood-indicator">◈ NOMINAL</div>
+                    <!-- Phase 1 image button — outer ring is visual only, center circle is the click zone -->
+                    <div id="click-btn-img-wrap" style="position:relative;width:188px;height:188px;flex-shrink:0;">
+                        <!-- Phase 1 button image -->
+                        <img id="click-btn-img" src="images/btn_phase1.png"
+                             alt="ACQUIRE"
+                             style="position:absolute;inset:0;width:100%;height:100%;border-radius:50%;pointer-events:none;user-select:none;transition:filter 0.15s,transform 0.12s;filter:drop-shadow(0 0 18px rgba(0,200,255,0.5));mix-blend-mode:screen;"
+                             draggable="false">
+                        <!-- Invisible click zone — 85% of image covers the button art -->
+                        <button id="click-btn"
+                                onpointerdown="Game.click(event);if(typeof HiddenMechanics!=='undefined')HiddenMechanics.recordClick(event.pageX,event.pageY)"
+                                style="position:absolute;
+                                       top:50%;left:50%;
+                                       transform:translate(-50%,-50%);
+                                       width:85%;height:85%;
+                                       border-radius:50%;
+                                       background:transparent;
+                                       border:none;
+                                       cursor:pointer;
+                                       z-index:2;
+                                       opacity:0;
+                                       padding:0;
+                                       touch-action:manipulation;"
+                                aria-label="ACQUIRE">
+                        </button>
+                        <!-- ── PHASE 3 ACQUIRE BUTTON — PNG image ── -->
+                        <div id="click-btn-p3" style="position:absolute;inset:0;display:none;align-items:center;justify-content:center;">
+                            <img src="images/btn_phase3.png" alt="ACQUIRE" style="width:100%;height:100%;pointer-events:none;user-select:none;mix-blend-mode:screen;filter:drop-shadow(0 0 18px rgba(150,50,255,0.6));" draggable="false">
+                        </div>
+                        <!-- ── PHASE 5 ACQUIRE BUTTON — PNG image ── -->
+                        <div id="click-btn-p5" style="position:absolute;inset:0;display:none;align-items:center;justify-content:center;">
+                            <img src="images/btn_phase5.png" alt="ACQUIRE" style="width:100%;height:100%;pointer-events:none;user-select:none;mix-blend-mode:screen;filter:drop-shadow(0 0 22px rgba(200,0,255,0.8));" draggable="false">
+                        </div>
+                    </div>
+                    <!-- Resonance timing arc — SVG ring that fills/empties in sync with the 2.4s pulse cycle -->
+                    <svg id="resonance-arc-svg" width="200" height="200" viewBox="0 0 200 200" aria-hidden="true">
+                        <circle class="resonance-arc-track" cx="100" cy="100" r="95"/>
+                        <circle class="resonance-arc-fill"  cx="100" cy="100" r="95"
+                                stroke-dasharray="597" stroke-dashoffset="597"/>
+                    </svg>
+                </div>
+
+                <!-- ── COMBO row (single compact line) ───────────────── -->
+                <div id="combo-wrap" style="flex-shrink:0;">
+                    <div id="combo-label">COMBO</div>
+                    <div id="combo-display">
+                        <span id="combo-mult">×1</span>
+                        <span id="combo-name"></span>
+                    </div>
+                    <div id="combo-hits-row" style="display:none;font-size:0.47rem;color:#334455;letter-spacing:1.5px;text-align:center;margin-top:2px;">
+                        <span id="combo-hits-label">0 hits</span><span id="combo-next-hint" style="margin-left:5px;color:#2a3a4a;"></span>
+                    </div>
+                    <div id="combo-bar-wrap"><div id="combo-bar"></div><div id="combo-decay-timer"></div></div>
+                    <div id="combo-decay-dots">
+                        <div class="cdot" id="cdot0"></div>
+                        <div class="cdot" id="cdot1"></div>
+                        <div class="cdot" id="cdot2"></div>
+                        <div class="cdot" id="cdot3"></div>
+                        <div class="cdot" id="cdot4"></div>
+                    </div>
+                    <div id="click-limit-row" style="display:none;">
+                        RATE LIMIT: <span id="click-limit-val">∞</span>/SEC
+                        <span id="click-rate-bar" style="display:inline-flex;gap:2px;align-items:center;"></span>
+                    </div>
+                </div>
+                </div><!-- end #btn-section -->
+
+                <!-- ── BOTTOM INFO STRIP ───────────────────────────── -->
+                <div id="bottom-info-strip" style="width:100%;flex-shrink:0;display:flex;flex-direction:column;gap:7px;margin-top:6px;">
+
+                    <!-- Fragment row (compact, no layout shift) -->
+                    <div id="fragment-row" style="display:none;font-size:0.5rem;color:#aa88ff;letter-spacing:1.5px;text-align:center;
+                        padding:5px 10px;background:rgba(100,50,200,0.1);border:1px solid rgba(150,80,255,0.18);border-top:1px solid rgba(180,100,255,0.28);border-radius:5px;"
+                        title="FRAGMENTS — a rare secondary resource.&#10;&#10;Earned by: clicking anomaly birds that appear during high instability, and passively via Signal Crystallizer (PP upgrade).&#10;Spent on: Memory Wipe (20 Fragments resets city Awareness), special Black Market deals, and future collapse upgrades.&#10;&#10;Fragments carry over through Prestige resets.">
+                        ◈ FRAGMENTS <span style="opacity:0.55;font-size:0.9em;" title="FRAGMENTS — rare resource earned from anomaly birds &amp; Signal Crystallizer. Spent on Memory Wipe, Black Market deals, and city actions. Persists through Prestige.">ⓘ</span>:
+                        <strong id="fragment-display" style="color:#cc99ff;">0</strong>
+                        <span id="frag-rate-display" style="margin-left:4px;opacity:0.6;color:#9977cc;"></span>
+                    </div>
+
+                    <!-- Combo overdrive (compact, won't cause reflow) -->
+                    <div id="combo-overdrive-indicator" style="display:none;font-size:0.48rem;color:#ff9944;letter-spacing:1.5px;text-align:center;
+                        padding:2px 6px;background:rgba(200,80,0,0.08);border:1px solid rgba(255,140,40,0.25);border-radius:4px;
+                        animation:tickerPulse 0.6s ease-in-out infinite alternate;">
+                        ⚡ <span id="combo-resonance-label">COMBO RESONANCE</span>
+                    </div>
+
+                    <!-- Instability + mini-HUD combined row -->
+                    <div style="background:rgba(6,12,28,0.6);border:1px solid rgba(51,153,255,0.1);border-top:1px solid rgba(51,153,255,0.2);border-radius:6px;padding:8px 10px 8px;">
+                        <!-- Instability line -->
+                        <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:5px;">
+                            <span style="font-size:0.46rem;letter-spacing:3px;color:#334f66;text-transform:uppercase;">INSTABILITY</span>
+                            <span id="instab-cp-label" style="font-size:0.52rem;letter-spacing:2px;color:#44cc88;">⚡ STABLE (0%)</span>
+                        </div>
+                        <!-- Instability bar with threshold tick marks -->
+                        <div style="position:relative;height:14px;margin-bottom:8px;">
+                            <!-- Fill track -->
+                            <div style="position:absolute;top:4px;left:0;right:0;height:4px;background:rgba(255,255,255,0.05);border-radius:2px;overflow:hidden;">
+                                <div id="instab-cp-fill" style="height:100%;width:0%;background:#44ffaa;border-radius:2px;transition:width 0.5s,background 0.5s;"></div>
+                            </div>
+                            <!-- Tick: 30% heartbeat -->
+                            <div title="30% — Heartbeat begins" style="position:absolute;left:30%;top:1px;width:1px;height:10px;background:rgba(255,180,60,0.55);pointer-events:none;"></div>
+                            <div style="position:absolute;left:30%;bottom:0;font-size:0.28rem;color:rgba(255,180,60,0.55);transform:translateX(-50%);pointer-events:none;letter-spacing:0;">♥</div>
+                            <!-- Tick: 50% chromatic aberration -->
+                            <div title="50% — Chromatic aberration" style="position:absolute;left:50%;top:1px;width:1px;height:10px;background:rgba(255,120,40,0.55);pointer-events:none;"></div>
+                            <div style="position:absolute;left:50%;bottom:0;font-size:0.28rem;color:rgba(255,120,40,0.55);transform:translateX(-50%);pointer-events:none;letter-spacing:0;">⚡</div>
+                            <!-- Tick: 80% vignette -->
+                            <div title="80% — Vignette" style="position:absolute;left:80%;top:1px;width:1px;height:10px;background:rgba(255,60,20,0.6);pointer-events:none;"></div>
+                            <div style="position:absolute;left:80%;bottom:0;font-size:0.28rem;color:rgba(255,60,20,0.6);transform:translateX(-50%);pointer-events:none;letter-spacing:0;">◉</div>
+                            <!-- Tick: 90% Redline — double-width, brighter -->
+                            <div title="90% — REDLINE (×10 EPS + chaos)" style="position:absolute;left:90%;top:0;width:2px;height:12px;background:rgba(255,0,100,0.75);pointer-events:none;"></div>
+                            <div style="position:absolute;left:90%;bottom:0;font-size:0.28rem;color:rgba(255,0,100,0.8);transform:translateX(-50%);pointer-events:none;letter-spacing:0;font-weight:bold;">RL</div>
+                        </div>
+                        <!-- Mini-HUD 4-stat row -->
+                        <div id="mini-hud" style="display:grid;grid-template-columns:1fr 1fr 1fr 1fr;gap:5px;">
+                            <div class="mini-hud-cell">
+                                <div class="mhud-label">EPS</div>
+                                <div class="mhud-val" id="mhud-eps-val">0/s</div>
+                            </div>
+                            <div class="mini-hud-cell">
+                                <div class="mhud-label">CLICK</div>
+                                <div class="mhud-val" id="mhud-click-val">0</div>
+                            </div>
+                            <div class="mini-hud-cell">
+                                <div class="mhud-label" id="mhud-prestige-label">PRESTIGE</div>
+                                <div class="mhud-val" id="mhud-prestige-val">×0</div>
+                            </div>
+                            <div class="mini-hud-cell">
+                                <div class="mhud-label">MULT</div>
+                                <div class="mhud-val" id="mhud-mult-val">×1</div>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- Objective widget -->
+                    <div id="objective-widget" style="display:none;padding:7px 10px;
+                        background:rgba(5,15,30,0.7);border:1px solid rgba(51,153,255,0.15);border-radius:6px;
+                        font-family:'Courier New',monospace;">
+                        <div style="font-size:0.44rem;letter-spacing:4px;color:#2a3a4a;text-transform:uppercase;margin-bottom:3px;">▸ OBJECTIVE</div>
+                        <div id="objective-text" style="font-size:0.62rem;color:#7aaabb;letter-spacing:0.5px;line-height:1.4;">—</div>
+                        <div style="margin-top:4px;height:2px;background:rgba(255,255,255,0.04);border-radius:1px;overflow:hidden;">
+                            <div id="objective-bar" style="height:100%;width:0%;background:linear-gradient(90deg,#2266aa,#44aadd);border-radius:1px;transition:width 0.4s;"></div>
+                        </div>
+                        <div id="objective-sub" style="font-size:0.5rem;color:#2a4055;margin-top:2px;letter-spacing:0.5px;"></div>
+                    </div>
+
+                </div><!-- end bottom-info-strip -->
+
+                <!-- THE END -->
+                <div id="end-upgrade-section" style="display:none;margin-top:10px;width:100%;text-align:center;flex-shrink:0;">
+                    <div style="font-size:0.55rem;color:#444;letter-spacing:3px;margin-bottom:6px;">— FINAL UPGRADE —</div>
+                    <button id="end-upgrade-btn" onclick="Game.buy('end')" style="width:90%;padding:12px 10px;background:linear-gradient(135deg,rgba(80,0,0,0.6),rgba(160,20,20,0.4));border:1px solid rgba(255,50,50,0.4);color:#ff6666;border-radius:8px;cursor:pointer;font-size:0.75rem;letter-spacing:3px;font-family:'Courier New',monospace;text-transform:uppercase;transition:0.2s;">
+                        ☠ THE END<br><span id="end-upgrade-cost" style="font-size:0.62rem;opacity:0.7;">0 E</span>
+                    </button>
+                    <div style="font-size:0.55rem;color:#333;margin-top:5px;letter-spacing:1px;">Beyond this point there is only silence.</div>
+                </div>
+
+            </div>
+
+        </div><!-- end .monitor-grid -->
+        </div><!-- end .monitor-grid-wrap -->
+
+        <!-- ═══════════════════════════════════════════════════════
+             PANEL OVERLAYS — opened via bottom nav
+        ═══════════════════════════════════════════════════════ -->
+
+        <!-- ANALYTICS OVERLAY -->
+        <div class="panel-overlay" id="overlay-analytics" role="dialog" aria-modal="true" aria-label="System Analytics panel">
+            <div class="panel-overlay-inner">
+                <div class="panel-overlay-header">
+                    <span class="panel-overlay-title">📊 &nbsp;System Analytics</span>
+                    <button onclick="PatchNotes.show()" style="background:rgba(68,136,68,0.1);border:1px solid rgba(68,136,68,0.3);color:#44aa44;padding:3px 8px;border-radius:4px;font-family:'Courier New',monospace;font-size:0.5rem;letter-spacing:2px;cursor:pointer;margin-right:6px;" title="Patch Notes">📋 LOGS</button>
+                    <button onclick="OperatorLog.show()" style="background:rgba(51,100,153,0.1);border:1px solid rgba(51,100,200,0.3);color:#4488cc;padding:3px 8px;border-radius:4px;font-family:'Courier New',monospace;font-size:0.5rem;letter-spacing:2px;cursor:pointer;margin-right:6px;" title="Operator Log — history of major events this run">📡 OP LOG</button>
+                    <button class="panel-close-btn" aria-label="Close Analytics" onclick="PanelNav.close('analytics')">✕</button>
+                </div>
+                <div class="analytics-grid">
+                    <div class="analytics-stats">
+                        <div style="margin-bottom: 14px;">
+                            <div class="stat-label">Throughput</div>
+                            <div id="pps-display" class="stat-value">0.0 / sec</div>
+                            <div id="eps-era-label" style="font-family:'Courier New',monospace;font-size:0.45rem;letter-spacing:3px;color:#334455;text-transform:uppercase;margin-top:3px;">— BOOT —</div>
+                            <canvas id="eps-sparkline" width="140" height="28" title="60-second EPS history. Green = rising, red = falling." style="display:block;margin-top:5px;opacity:0.75;"></canvas>
+                        </div>
+                        <div style="margin-bottom: 14px;">
+                            <div class="stat-label">Multiplier</div>
+                            <div id="mult-display" class="stat-value">x1.0</div>
+                        </div>
+                        <div id="data-stat-row" style="margin-bottom: 14px; display:none;">
+                            <div class="stat-label" style="color:#44ccff;" title="DATA is a secondary resource earned from high-level anomaly birds and city districts. It's spent in the Sim Slots panel to run parallel simulations that boost passive income.">⬡ DATA ⓘ</div>
+                            <div id="data-stat-display" class="stat-value" style="color:#44ccff; font-size:1rem;">0 DATA</div>
+                        </div>
+                        <div id="corrupted-data-row" style="margin-bottom:14px;display:none;">
+                            <div class="stat-label" style="color:#ff4466;" title="CORRUPTED DATA: Earned by holding Instability between 90-98% (Redline). Spend in the Black Market Terminal or exchange for Fragments.">⬡ CORRUPTED DATA ⓘ</div>
+                            <div id="corrupted-data-display" class="stat-value" style="color:#ff4466;font-size:1rem;text-shadow:0 0 8px rgba(255,50,100,0.4);">0 CD</div>
+                        </div>
+                        <!-- Click power & total multiplier — addressing GPT feedback: key stats hidden -->
+                        <div style="display:grid;grid-template-columns:1fr 1fr;gap:8px;margin-bottom:14px;">
+                            <div>
+                                <div class="stat-label">🖱 Click Power</div>
+                                <div id="click-power-display" class="stat-value" style="font-size:0.9rem;color:#88aaff;">0</div>
+                            </div>
+                            <div>
+                                <div class="stat-label">✖ Effective Mult</div>
+                                <div id="total-mult-display" class="stat-value" style="font-size:0.9rem;color:#ffcc44;">×1</div>
+                            </div>
+                        </div>
+                        <div id="achieve-mastery-info" style="margin-bottom:10px;">
+                            ⬡ MASTERY: <span id="achieve-mastery-pts">0</span> pts → <span id="achieve-mastery-bonus">+0.0%</span> all output
+                        </div>
+                        <div style="margin-bottom: 14px;">
+                            <div class="stat-label hs-label">⬡ All-Time High</div>
+                            <div id="highscore-display" class="stat-value" style="font-size:1.35rem; color:#ffcc44; text-shadow:0 0 10px rgba(255,200,60,0.4);">0</div>
+                        </div>
+                        <div id="lore-phase-row" style="margin-bottom:14px;display:none;">
+                            <div class="stat-label" style="color:#8855cc;" title="Current chapter of the simulation narrative. Each chapter unlocks new mechanics and lore.">⬡ NARRATIVE PROGRESS</div>
+                            <div id="lore-phase-display" class="stat-value" style="font-size:0.9rem;color:#aa77ff;">CHAPTER — / 5</div>
+                        </div>
+                        <!-- Prestige Row — hidden until 1B energy or first prestige -->
+                        <div id="prestige-row-wrap" style="padding:10px; background:rgba(80,0,130,0.2); border:1px solid rgba(150,50,255,0.2); border-radius:8px; display:none;">
+                            <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:6px;">
+                                <div style="display:flex; align-items:center; gap:8px;">
+                                    <span style="font-size:0.7rem; color:#886699; letter-spacing:2px; text-transform:uppercase;">Prestige</span>
+                                    <span id="prestige-count-badge" style="font-size:0.75rem; color:#cc88ff; font-family:'Courier New',monospace;">×0</span>
+                                </div>
+                                <span class="lp-badge" onclick="Prestige.openModal()"
+                                    title="Legacy Points (LP) — the currency of rebirth.&#10;&#10;Earned by: clicking the ACQUIRE button (~1 LP per 150 clicks).&#10;Spent on: permanent Neural Tree upgrades that survive Prestige resets.&#10;&#10;Prestige (rebirth) resets your energy and items in exchange for a permanent&#10;bonus to all future energy generation. The more you have earned before&#10;prestiging, the bigger the bonus.&#10;&#10;Click here to open the Neural Upgrade Tree.">
+                                    <span class="lp-dot"></span>
+                                    <span id="lp-display">0 LP</span>
+                                </span>
+                            </div>
+                            <div style="font-size:0.65rem; color:#665577; letter-spacing:1px; margin-bottom:4px;" title="LP (Legacy Points) are earned by clicking the ACQUIRE button. Each ~150 clicks earns 1 LP. LP is spent in the Prestige menu on permanent upgrades that survive resets.">CLICKS TO NEXT LP ⓘ</div>
+                            <div style="display:flex; align-items:center; gap:8px;">
+                                <span id="click-to-lp" style="font-size:0.72rem; color:#9977aa; font-family:'Courier New',monospace;">0 / ???</span>
+                            </div>
+                            <div class="click-progress" title="Progress toward your next Legacy Point. Fill this bar by clicking ACQUIRE manually. LP persists through Prestige resets and funds permanent upgrades."><div class="click-progress-bar" id="click-progress-bar" style="width:0%"></div></div>
+                            <div id="prestige-run-history" style="display:none;font-size:0.58rem;color:#554466;letter-spacing:1px;margin-top:4px;font-family:'Courier New',monospace;"></div>
+                            <div id="lp-next-upgrade" style="font-size:0.6rem;color:#9966cc;font-family:'Courier New',monospace;margin-top:5px;letter-spacing:1px;display:none;"></div>
+                        </div>
+                    </div>
+                    <div class="analytics-controls">
+                        <div class="control-row">
+                            <button class="control-btn" onclick="Sounds.hover(); Game.save()">SAVE DATA</button>
+                            <button class="control-btn" style="border-color:#522; color:#a55;" onclick="Sounds.fail(); Game.reset()">WIPE SLOT</button>
+                        </div>
+                        <div class="control-row" style="margin-top:4px;">
+                            <button class="control-btn" style="width:100%;border-color:rgba(100,60,180,0.5);color:#aa88ff;" onclick="Sounds.menuClick(); Game.save(); if(confirm('Exit to home screen? Your game is saved.')) Menu.returnToHome();">⌂ EXIT TO HOME</button>
+                        </div>
+                        <div id="save-msg" style="text-align:center; height:20px; color:var(--highlight); margin-top:6px; font-size:0.8rem;"></div>
+                        <div class="control-row" style="margin-top:4px;">
+                            <button class="control-btn" style="width:100%;border-color:rgba(255,200,50,0.4);color:#ffcc44;" onclick="Achieve.openPanel()">⬡ ACHIEVEMENTS <span id="achieve-btn-badge" style="font-size:0.65rem;color:#aaa;"></span></button>
+                        </div>
+                        <div class="control-row" style="margin-top:4px;">
+                            <button class="control-btn" style="width:100%;border-color:rgba(51,200,255,0.3);color:#44ccff;" onclick="Stats.openPanel()">📊 STATISTICS</button>
+                        </div>
+                        <!-- Personality Badge -->
+                        <div id="personality-row" style="display:none;margin-top:10px;text-align:center;font-family:'Courier New',monospace;font-size:0.5rem;letter-spacing:2px;padding:6px;border:1px solid rgba(255,255,255,0.05);border-radius:5px;">
+                            <div style="color:#334455;letter-spacing:3px;font-size:0.42rem;margin-bottom:3px;">PLAY STYLE DETECTED</div>
+                            <div id="personality-badge-text" style="color:#888;font-size:0.58rem;"></div>
+                        </div>
+                        <!-- Void Branch toggle -->
+                        <div class="control-row" style="margin-top:10px;">
+                            <button class="control-btn" style="width:100%;border-color:rgba(80,40,120,0.4);color:#7744aa;font-size:0.52rem;" onclick="document.getElementById('void-branch-wrap').style.display=document.getElementById('void-branch-wrap').style.display==='none'?'block':'none'">☽ THE VOID BRANCH</button>
+                        </div>
+                        <div id="void-branch-wrap" style="display:none;margin-top:6px;">
+                            <div id="void-branch-panel"></div>
+                        </div>
+                        <!-- Overdrive Mode -->
+                        <div class="control-row" style="margin-top:6px;">
+                            <button id="overdrive-btn" class="control-btn" style="width:100%;border-color:rgba(255,80,50,0.5);color:#ff7755;font-size:0.58rem;" onclick="OverdriveMode.activate()">🔴 ACTIVATE OVERDRIVE (×10 · 30s · +instability)</button>
+                        </div>
+                        <!-- Quantum Lottery -->
+                        <div class="control-row" style="margin-top:4px;">
+                            <button id="lottery-btn" class="control-btn" style="width:100%;border-color:rgba(100,80,200,0.4);color:#8866ff;font-size:0.58rem;" onclick="QuantumLottery.spin()">🎰 QUANTUM LOTTERY (costs 5% energy · random outcome)</button>
+                        </div>
+                        <!-- Progress Timeline -->
+                        <div style="margin-top:12px;padding:10px 12px;background:rgba(5,10,25,0.6);border:1px solid rgba(51,153,255,0.1);border-radius:7px;">
+                            <div style="font-size:0.45rem;letter-spacing:4px;color:#2a3a4a;text-transform:uppercase;margin-bottom:8px;">◈ PROGRESS TIMELINE</div>
+                            <div id="progress-timeline"></div>
+                        </div>
+                        <!-- Simulation Loadout -->
+                        <div style="margin-top:12px;padding:10px 12px;background:rgba(5,15,30,0.6);border:1px solid rgba(51,100,200,0.15);border-radius:7px;">
+                            <div style="font-size:0.45rem;letter-spacing:4px;color:#1a2a4a;text-transform:uppercase;margin-bottom:8px;cursor:pointer;" onclick="this.parentElement.querySelector('#loadout-list').style.display=this.parentElement.querySelector('#loadout-list').style.display==='none'?'block':'none'">⚙ SIMULATION LOADOUT ▸</div>
+                            <div id="loadout-list" style="display:none;">
+                                <div style="font-size:0.52rem;color:#223344;margin-bottom:8px;line-height:1.6;">Configure which corruptions run in your simulation. Disable events for a quieter run. Changes take effect immediately.</div>
+                                <div id="loadout-toggles" style="display:flex;flex-direction:column;gap:5px;"></div>
+                                <div style="font-size:0.44rem;color:#112233;margin-top:6px;letter-spacing:1px;">⚠ Disabling events may reduce rewards and fragment drops.</div>
+                            </div>
+                        </div>
+                        <!-- Echo Probe -->
+                        <div id="echo-probe-wrap" style="margin-top:8px;">
+                            <div style="font-size:0.45rem;letter-spacing:4px;color:#1a3050;text-transform:uppercase;margin-bottom:6px;">◈ ECHO PROBE — OFFLINE EXPEDITION</div>
+                            <div id="echo-probe-status" style="font-size:0.58rem;color:#446688;line-height:1.6;">Launch an Echo Probe before closing the game.<br>It reports back when you return.</div>
+                            <button id="echo-probe-btn" onclick="EchoProbe.launch()">🛸 LAUNCH PROBE (costs 1e9 Energy)</button>
+                            <div id="echo-probe-active-msg" style="display:none;font-size:0.55rem;color:#44aa88;margin-top:4px;letter-spacing:1px;">▶ PROBE DEPLOYED — returns on next session</div>
+                            <div id="echo-probe-dme-wrap" style="margin-top:8px;display:flex;align-items:center;gap:8px;">
+                                <label style="display:flex;align-items:center;gap:6px;cursor:pointer;font-family:'Courier New',monospace;font-size:0.52rem;color:#556677;letter-spacing:1px;" title="10x rewards but 30% chance probe is destroyed. EPS penalty if lost.">
+                                    <input type="checkbox" id="echo-probe-dme" style="accent-color:#ff6622;width:12px;height:12px;" onchange="state._probeDarkMatterToggle=this.checked">
+                                    <span>⚠ DARK MATTER ENGINE — ×10 rewards / 30% destruction risk</span>
+                                </label>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- SHOP OVERLAY -->
+        <div class="panel-overlay" id="overlay-shop" role="dialog" aria-modal="true" aria-label="Asset Procurement shop panel">
+            <div class="panel-overlay-inner">
+                <div class="panel-overlay-header">
+                    <span class="panel-overlay-title">🛒 &nbsp;Asset Procurement</span>
+                    <div style="display:flex; align-items:center; gap:10px;">
+                        <div id="shop-tab-btns" style="display:flex; gap:6px;">
+                            <button id="tab-assets-btn" onclick="ShopTabs.show('assets')" style="padding:4px 10px; font-size:0.68rem; letter-spacing:2px; background:rgba(51,153,255,0.15); border:1px solid rgba(51,153,255,0.5); color:#88ccff; border-radius:4px; cursor:pointer; transition:0.2s;">ASSETS</button>
+                            <button id="tab-pp-btn" onclick="ShopTabs.show('pp')" title="People Points (PP) — earned by city buildings and walkers.&#10;&#10;Spend PP here on permanent upgrades for City Nexus, passive income, and building types.&#10;PP survives Prestige resets and stacks each run.&#10;&#10;Tip: build more Residential + Civic adjacency pairs to generate PP faster." style="padding:4px 10px; font-size:0.68rem; letter-spacing:2px; background:transparent; border:1px solid rgba(100,220,120,0.3); color:#66aa77; border-radius:4px; cursor:pointer; transition:0.2s;">👥 PP ⓘ <span id="pp-tab-count" style="font-size:0.6rem; color:#446655;"></span></button>
+                        </div>
+                        <button class="panel-close-btn" aria-label="Close Shop" onclick="PanelNav.close('shop')">✕</button>
+                    </div>
+                    <div class="buy-qty-row">
+                        <span class="buy-qty-label">BUY</span>
+                        <button class="buy-qty-btn active" id="bq-1"   onclick="BuyQty.set(1)"     title="Buy 1 at a time">1×</button>
+                        <button class="buy-qty-btn"        id="bq-10"  onclick="BuyQty.set(10)"    title="Buy 10 at a time  (hold Shift)">10×</button>
+                        <button class="buy-qty-btn"        id="bq-100" onclick="BuyQty.set(100)"   title="Buy 100 at a time (hold Ctrl)">100×</button>
+                        <button class="buy-qty-btn"        id="bq-max" onclick="BuyQty.set('max')" title="Buy maximum affordable (hold Alt)">MAX</button>
+                    </div>
+                </div>
+                <div id="cure-hint-banner" onclick="CureTelegraph.jump()" role="button" tabindex="0" aria-label="Jump to Neural Link — cures Hardware Fatigue" onkeydown="if(event.key==='Enter'||event.key===' ')CureTelegraph.jump()">
+                    ⚕ HARDWARE FATIGUE DETECTED — <strong style="color:#00ff88;">NEURAL LINK</strong> will cure cursor lag
+                    <div class="cure-cost" id="cure-cost-display"></div>
+                </div>
+                <div class="shop-inner">
+                    <div id="medusa-btn" onclick="MedusaProtocol.toggle()" role="button" tabindex="0" aria-label="Toggle Medusa Protocol — 100× EPS while cursor is still" onkeydown="if(event.key==='Enter'||event.key===' ')MedusaProtocol.toggle()">
+            <div style="font-size:0.44rem;letter-spacing:4px;color:#004433;margin-bottom:2px;">◈ MEDUSA PROTOCOL</div>
+            <div style="font-size:0.55rem;color:#006644;line-height:1.5;">100× EPS while cursor is <em>perfectly still</em>. Any movement = 5s penalty.</div>
+            <div id="medusa-status"></div>
+        </div>
+        <div id="the-machine-wrap">
+            <div style="font-size:0.44rem;letter-spacing:4px;color:#664400;margin-bottom:4px;">◈ THE MACHINE</div>
+            <div style="font-size:0.55rem;color:#aa6622;margin-bottom:8px;line-height:1.5;">50% CHANCE: ×10 ENERGY &nbsp;|&nbsp; 50% CHANCE: LOSE 50%<br><span style="color:#442200;font-size:0.48rem;">High risk. High reward. No refunds.</span></div>
+            <button onclick="TheMachine.pull()" style="width:100%;padding:8px 0;background:rgba(80,30,0,0.5);border:1px solid rgba(255,120,0,0.4);color:#ff8833;border-radius:6px;cursor:pointer;font-family:'Courier New',monospace;font-size:0.65rem;letter-spacing:3px;transition:0.2s;" onmouseover="this.style.background='rgba(100,40,0,0.7)'" onmouseout="this.style.background='rgba(80,30,0,0.5)'">🎰 PULL LEVER</button>
+            <div id="machine-result"></div>
+        </div>
+        <div id="process-fork-wrap" style="display:none;border:1px solid rgba(0,255,100,0.25);border-radius:8px;padding:10px 12px;margin:6px 0;background:rgba(0,15,5,0.7);font-family:'Courier New',monospace;">
+            <div style="font-size:0.44rem;letter-spacing:4px;color:#003322;margin-bottom:2px;">⚙ PROCESS FORKING</div>
+            <div style="font-size:0.55rem;color:#005533;margin-bottom:8px;line-height:1.5;">Opens a secondary window as a Processing Node.<br><span style="color:#002211;font-size:0.48rem;">×5 global production while node window remains open.</span></div>
+            <button onclick="ProcessFork.fork()" style="width:100%;padding:8px 0;background:rgba(0,40,20,0.6);border:1px solid rgba(0,180,80,0.4);color:#00cc66;border-radius:6px;cursor:pointer;font-family:'Courier New',monospace;font-size:0.65rem;letter-spacing:3px;">⚙ FORK PROCESS</button>
+        </div>
+
+        <div id="power-routing-wrap">
+            <div class="routing-header">⚡ POWER ROUTING — BANDWIDTH ALLOCATION</div>
+            <div class="routing-sector">
+                <div class="routing-sector-label">
+                    <span class="routing-sector-name">⬡ ENERGY SECTOR</span>
+                    <span><span class="routing-sector-pct" id="rs-energy-pct">50%</span> <span class="routing-sector-mult" id="rs-energy-mult"></span></span>
+                </div>
+                <input type="range" class="routing-slider" id="rs-energy" min="0" max="100" value="50" oninput="PowerRouting.onSlide('energy',+this.value)">
+            </div>
+            <div class="routing-sector">
+                <div class="routing-sector-label">
+                    <span class="routing-sector-name">🏙 CITY SECTOR</span>
+                    <span><span class="routing-sector-pct" id="rs-city-pct">30%</span> <span class="routing-sector-mult" id="rs-city-mult"></span></span>
+                </div>
+                <input type="range" class="routing-slider" id="rs-city" min="0" max="100" value="30" oninput="PowerRouting.onSlide('city',+this.value)">
+            </div>
+            <div class="routing-sector">
+                <div class="routing-sector-label">
+                    <span class="routing-sector-name">🔴 ANOMALY SECTOR</span>
+                    <span><span class="routing-sector-pct" id="rs-anomaly-pct">20%</span> <span class="routing-sector-mult" id="rs-anomaly-mult"></span></span>
+                </div>
+                <input type="range" class="routing-slider" id="rs-anomaly" min="0" max="100" value="20" oninput="PowerRouting.onSlide('anomaly',+this.value)">
+            </div>
+            <div id="routing-total-bar"><div id="routing-total-fill" style="width:100%;"></div></div>
+            <div id="routing-total-label"><span>TOTAL BANDWIDTH</span><span id="routing-total-val">100%</span></div>
+        </div>
+
+        <button id="abstraction-btn" onclick="NumericalAbstraction.toggle()">◈ ENGAGE NUMERICAL ABSTRACTION — ×100 (blind mode)</button>
+        <!-- Visual divider separating special mechanics from the purchasable assets list -->
+        <div id="shop-assets-divider">
+            <span>⚙ PURCHASABLE ASSETS</span>
+            <span id="shop-assets-count" style="opacity:0.4;font-size:0.9em;"></span>
+        </div>
+        <div id="shop-list"></div>
+                    <div id="pp-upgrades-list" style="display:none;"></div>
+                </div>
+            </div>
+        </div>
+
+        <!-- CITY OVERLAY -->
+        <div class="panel-overlay" id="overlay-city" role="dialog" aria-modal="true" aria-label="City Nexus panel">
+            <div class="panel-overlay-inner">
+                <div class="panel-overlay-header">
+                    <span class="panel-overlay-title">🏙️ &nbsp;City Nexus</span>
+                    <div style="display:flex; align-items:center; gap:12px;">
+                        <div style="display:flex; gap:10px; flex-wrap:wrap;">
+                            <div class="city-stat-chip" title="Attraction — how appealing your city is to inhabitants. Higher attraction accelerates people growth and unlocks blueprints. Raised by placing Residential and Civic buildings.">ATTRACT <strong id="city-population">0</strong></div>
+                            <div class="city-stat-chip" title="Building plots used vs. total available. Each placed building occupies one plot. Expand total slots via the City Planner and Megacity LP tree upgrades.">PLOTS <strong id="city-slots">0/40</strong></div>
+                            <div class="city-stat-chip" style="color:#88ffaa; border-color:rgba(100,220,120,0.3);" title="People Points — earned when walkers visit buildings (+1 per visit, ×adjacency & policy bonuses). Spend PP in the City Nexus upgrades panel to unlock passive income bonuses, new building types, and district powers.">PEOPLE <strong id="city-people-points" style="color:#88ffaa;">0</strong></div>
+                            <div class="city-stat-chip" style="color:#44ddff; border-color:rgba(40,180,220,0.3);" title="Data — generated when walkers enter Tech buildings (+0.5/visit) and by tech districts (0.05/s per tech slot). Spend Data in City upgrades for permanent EPS bonuses: Data Cache (+5%), Data Matrix (+12%), Data Nexus (+25% + PP×2).">DATA <strong id="city-data-display" style="color:#44ddff;">0</strong></div>
+                            <div class="city-stat-chip" style="color:#ff8866;border-color:rgba(255,100,60,0.3);" id="city-awareness-chip" title="Awareness — citizens who suspect they are being harvested. Grows under aggressive policy; slows under Welfare. Triggers a Rebellion (all city output halted) at 100%. Use Memory Wipe (20 Fragments) to reset.">AWARE <strong id="city-awareness-val" style="color:#ff8866;">0%</strong></div>
+                            <div class="city-stat-chip" id="city-adj-chip" style="color:#2a5544;border-color:rgba(50,120,90,0.2);font-size:0.58rem;">⟁ SYNERGY: —</div>
+                            <div class="city-stat-chip" id="city-thermal-chip" style="display:none;color:#ff8833;border-color:rgba(255,120,30,0.3);" title="Thermal Decay — adjacency bonuses overheat over time when the same buildings remain neighbours. At 100% heat, adjacency bonuses are fully suppressed (−20% EPS). Rotate or rearrange your city grid to cool down.">🔥 HEAT <strong id="city-thermal-val" style="color:#ff8833;">0%</strong></div>
+                        </div>
+                        <!-- Blueprint buttons -->
+                        <div style="display:flex;gap:6px;flex-shrink:0;">
+                            <button onclick="CityBlueprint.save()" title="Save current city layout as a Blueprint. Free to save, costs 50 PP to restore after prestige." style="padding:4px 10px;font-size:0.52rem;letter-spacing:2px;font-family:'Courier New',monospace;background:rgba(40,80,60,0.5);border:1px solid rgba(60,180,100,0.35);color:#44aa77;border-radius:5px;cursor:pointer;transition:0.15s;"
+                                onmouseover="this.style.background='rgba(50,100,70,0.7)'" onmouseout="this.style.background='rgba(40,80,60,0.5)'">📐 SAVE BP</button>
+                            <button onclick="CityBlueprint.load()" id="load-blueprint-btn" title="Load saved Blueprint (costs 50 PP). Overwrites current city." style="padding:4px 10px;font-size:0.52rem;letter-spacing:2px;font-family:'Courier New',monospace;background:rgba(40,50,90,0.5);border:1px solid rgba(80,120,200,0.3);color:#5577cc;border-radius:5px;cursor:pointer;transition:0.15s;opacity:0.5;"
+                                onmouseover="this.style.background='rgba(50,60,110,0.7)'" onmouseout="this.style.background='rgba(40,50,90,0.5)'">📥 LOAD BP</button>
+                            <button onclick="City.wipeGrid()" title="Sell all buildings and clear the entire grid. Refunds energy for each building." style="padding:4px 10px;font-size:0.52rem;letter-spacing:2px;font-family:'Courier New',monospace;background:rgba(80,20,20,0.5);border:1px solid rgba(200,60,60,0.35);color:#cc5555;border-radius:5px;cursor:pointer;transition:0.15s;"
+                                onmouseover="this.style.background='rgba(110,25,25,0.7)'" onmouseout="this.style.background='rgba(80,20,20,0.5)'">🗑 WIPE GRID</button>
+                        </div>
+                        <button class="panel-close-btn" aria-label="Close City" onclick="PanelNav.close('city')">✕</button>
+                    </div>
+                </div>
+                <div id="awareness-memory-wipe-btn" style="background:rgba(50,10,10,0.85);border:1px solid rgba(255,60,60,0.5);border-radius:6px;padding:8px 14px;margin-bottom:8px;font-family:'Courier New',monospace;font-size:0.55rem;text-align:center;">
+                    <span style="color:#ff6644;letter-spacing:2px;">🔴 CITY REBELLION ACTIVE — all city output halted</span><br>
+                    <button onclick="CityAwareness.memoryWipe()" style="margin-top:6px;padding:5px 16px;background:rgba(80,0,0,0.6);border:1px solid rgba(255,80,80,0.4);color:#ff8866;border-radius:5px;cursor:pointer;font-family:'Courier New',monospace;font-size:0.55rem;letter-spacing:2px;">⚡ MEMORY WIPE (20 FRAGS)</button>
+                </div>
+                <div class="city-inner">
+                    <div class="city-map-wrapper" style="flex:2; min-width:0; position:relative; overflow:hidden;">
+                        <!-- Zoom toggle button — top-right corner of the map -->
+                        <button id="city-zoom-btn" onclick="City.toggleZoom()"
+                            title="Toggle city map zoom. Zoom in to see tile details; zoom out for full grid overview."
+                            style="position:absolute;top:4px;right:4px;z-index:20;padding:3px 7px;background:rgba(0,10,20,0.85);border:1px solid rgba(80,160,255,0.35);color:#5599cc;border-radius:4px;cursor:pointer;font-family:'Courier New',monospace;font-size:0.44rem;letter-spacing:1px;transition:background 0.15s;"
+                            onmouseover="this.style.background='rgba(10,30,60,0.9)'" onmouseout="this.style.background='rgba(0,10,20,0.85)'">
+                            🔍 ZOOM
+                        </button>
+                        <div id="city-map" style="width:100%;height:100%;transition:transform 0.25s ease;transform-origin:top left;"></div>
+                    </div>
+                    <div id="city-shop" class="city-shop-list">
+                        <!-- City Policy Section - added by City.renderShop() -->
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- INCOME OVERLAY -->
+        <div class="panel-overlay" id="overlay-income" role="dialog" aria-modal="true" aria-label="Income log panel">
+            <div class="panel-overlay-inner">
+                <div class="panel-overlay-header">
+                    <span class="panel-overlay-title">📈 &nbsp;Income Log</span>
+                    <button class="panel-close-btn" aria-label="Close Income" onclick="PanelNav.close('income')">✕</button>
+                </div>
+                <div class="income-scroll-wrap">
+                    <div class="income-header-eps" style="margin-bottom:8px; flex-shrink:0;">TOTAL: <span id="income-total-eps">0/s</span></div>
+                    <!-- EPS Multiplier breakdown — addresses GPT "system clarity" feedback -->
+                    <div id="eps-breakdown-box" style="background:rgba(5,10,20,0.4);border:1px solid rgba(255,255,255,0.04);border-radius:6px;padding:6px 10px;margin-bottom:8px;font-family:'Courier New',monospace;font-size:0.53rem;flex-shrink:0;">
+                        <div style="color:#334455;letter-spacing:3px;font-size:0.48rem;margin-bottom:6px;text-transform:uppercase;">EPS MULTIPLIER BREAKDOWN</div>
+                        <div id="eps-breakdown-rows" style="display:flex;flex-direction:column;gap:3px;"></div>
+                        <div style="border-top:1px solid rgba(255,255,255,0.05);margin-top:5px;padding-top:4px;display:flex;justify-content:space-between;">
+                            <span style="color:#334455;">EFFECTIVE TOTAL</span>
+                            <span id="eps-breakdown-total" style="color:#88ccaa;font-weight:bold;">×1.00</span>
+                        </div>
+                    </div>
+                    <div id="income-list" class="income-list">
+                        <div class="income-empty">NO ASSETS ONLINE</div>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- ═══════════════════════════════════════════════════════
+             BOTTOM NAVIGATION BAR
+        ═══════════════════════════════════════════════════════ -->
+        <div id="safe-mode-badge">🛡 Safe Mode</div>
+        <div id="bottom-nav">
+            <!-- GROUP 1: Core gameplay -->
+            <button class="nav-btn" id="nav-btn-city" aria-label="City Nexus — place buildings, earn People Points" onclick="PanelNav.toggle('city')">
+            <div class="nav-tooltip"><strong>City Nexus</strong>Place buildings · Earn People Points · Adjacency bonuses · Set Governance Policy</div>
+            <span class="nav-btn-icon"><img class="nav-icon-img" src="images/nav_city.png" alt=""></span>
+            <span class="nav-btn-label">City</span>
+            </button>
+            <button class="nav-btn" id="nav-btn-shop" aria-label="Shop — buy generators and upgrades" onclick="PanelNav.toggle('shop')">
+            <div class="nav-tooltip"><strong>Asset Procurement</strong>Buy generators (auto income) and click upgrades. Multiples stack.</div>
+            <span class="nav-btn-icon"><img class="nav-icon-img" src="images/nav_shop.png" alt=""></span>
+            <span class="nav-btn-label">Shop</span>
+            </button>
+            <button class="nav-btn" id="nav-btn-income" aria-label="Income Log — live energy-per-second breakdown" onclick="PanelNav.toggle('income')">
+            <div class="nav-tooltip"><strong>Income Log</strong>Live EPS breakdown per generator · Multiplier stack · What's earning most</div>
+            <span class="nav-btn-icon"><img class="nav-icon-img" src="images/nav_income.png" alt=""></span>
+            <span class="nav-btn-label">Income</span>
+            </button>
+            <div class="nav-btn-sep"></div>
+            <!-- GROUP 2: Analysis & Progress -->
+            <button class="nav-btn" id="nav-btn-analytics" aria-label="System Analytics — prestige tree and EPS stats" onclick="PanelNav.toggle('analytics')">
+            <div class="nav-tooltip"><strong>System Analytics</strong>EPS stats · Prestige tree · LP spend · Achievements · Void Branch</div>
+            <span class="nav-btn-icon"><img class="nav-icon-img" src="images/nav_analytics.png" alt=""></span>
+            <span class="nav-btn-label">Analytics</span>
+            </button>
+            <button class="nav-btn" id="nav-btn-stats" aria-label="Statistics panel" onclick="Stats.togglePanel()">
+            <div class="nav-tooltip"><strong>Statistics</strong>Detailed gameplay data</div>
+            <span class="nav-btn-icon"><img class="nav-icon-img" src="images/nav_stats.png" alt=""></span>
+            <span class="nav-btn-label">Stats</span>
+            </button>
+            <button class="nav-btn" id="nav-btn-achieve" aria-label="Achievements — view unlocked and locked awards" onclick="(function(){const o=document.getElementById('achieve-overlay');const btn=document.getElementById('nav-btn-achieve');if(o&&o.classList.contains('open')){o.style.display='none';o.classList.remove('open');if(btn)btn.classList.remove('active');}else{if(window.PanelNav&&PanelNav.getCurrent())PanelNav.close();Achieve.openPanel();if(btn)btn.classList.add('active');}})()">
+            <div class="nav-tooltip"><strong>Achievements</strong>View unlocked &amp; locked awards</div>
+            <span class="nav-btn-icon"><img class="nav-icon-img" src="images/nav_achieve.png" alt=""></span>
+            <span class="nav-btn-label">Awards</span>
+            </button>
+            <div class="nav-btn-sep"></div>
+            <!-- GROUP 3: Advanced (unlock progressively) -->
+            <!-- V1.20.4.9 — Corruption Compiler & Core Binding (unlock at prestige 1) -->
+            <button class="nav-btn nav-btn-hidden" id="nav-btn-compiler" aria-label="Corruption Compiler — cast instability spells for bonuses" onclick="PanelNav.toggle('compiler')">
+            <div class="nav-tooltip"><strong>Corruption Compiler</strong>Cast limited-charge spells for production bonuses. Instability risk included.</div>
+            <span class="nav-btn-icon" aria-hidden="true">⚗</span>
+            <span class="nav-btn-label" style="color:#aa66ff;">Compiler</span>
+            </button>
+            <button class="nav-btn nav-btn-hidden" id="nav-btn-binding" aria-label="Core Binding — socket fragments into passive aura slots" onclick="PanelNav.toggle('binding')">
+            <div class="nav-tooltip"><strong>Core Binding</strong>Socket fragments into three permanent aura slots for passive bonuses. Unlocks progressively.</div>
+            <span class="nav-btn-icon" aria-hidden="true">◈</span>
+            <span class="nav-btn-label" style="color:#44ccaa;">Binding</span>
+            </button>
+            <button class="nav-btn nav-btn-hidden" id="nav-btn-mega" aria-label="Mega Projects — universe-scale construction" onclick="PanelNav.toggle('mega')">
+            <div class="nav-tooltip"><strong>Mega Projects</strong>Universe-scale construction goals</div>
+            <span class="nav-btn-icon"><img class="nav-icon-img" src="images/nav_mega.png" alt=""></span>
+            <span class="nav-btn-label">Projects</span>
+            </button>
+            <button class="nav-btn nav-btn-hidden" id="nav-btn-museum" aria-label="Museum of Dead Iterations" onclick="Museum.toggle()">
+            <div class="nav-tooltip"><strong>Museum of Dead Iterations</strong>Relics from collapsed universes. They serve no purpose. That is the point.</div>
+            <span class="nav-btn-icon" aria-hidden="true">🏛</span>
+            <span class="nav-btn-label" style="color:#aa8855;">Museum</span>
+            </button>
+            <button class="nav-btn nav-btn-hidden" id="nav-btn-terminal" aria-label="Terminal — encrypted data logs and lore" onclick="Terminal.toggle()">
+            <div class="nav-tooltip"><strong>Terminal</strong>Encrypted data logs · recovered lore transmissions · operator history</div>
+            <span class="nav-btn-icon"><img class="nav-icon-img" src="images/nav_terminal.png" alt=""></span>
+            <span class="nav-btn-label" style="color:#00aa66;">Terminal</span>
+            </button>
+            <button class="nav-btn nav-btn-hidden" id="nav-btn-simslots" aria-label="Simulation Slots — deploy parallel universe instances" onclick="PanelNav.toggle('simslots')">
+            <div class="nav-tooltip"><strong>Simulation Slots</strong>Run parallel universes for bonus output</div>
+            <span class="nav-btn-icon"><img class="nav-icon-img" src="images/nav_simslots.png" alt=""></span>
+            <span class="nav-btn-label">Sims</span>
+            </button>
+            <button class="nav-btn nav-btn-hidden" id="nav-btn-reality" aria-label="Physics Editor — rewrite simulation constants" onclick="PanelNav.toggle('reality')">
+            <div class="nav-tooltip"><strong>Physics Editor</strong>Rewrite the simulation's physical constants</div>
+            <span class="nav-btn-icon" aria-hidden="true">⚛</span>
+            <span class="nav-btn-label">Physics</span>
+            </button>
+            <div class="nav-btn-sep"></div>
+            <!-- GROUP 4: Underground / Secrets -->
+            <button class="nav-btn" id="nav-btn-null" aria-label="[NULL] — do not click this" onclick="NullTab.toggle()">
+            <div class="nav-tooltip"><strong>[NULL]</strong>Do not click this.</div>
+            <span class="nav-btn-icon" aria-hidden="true">▓</span>
+            <span class="nav-btn-label">[NULL]</span>
+            </button>
+            <button class="nav-btn nav-btn-hidden" id="nav-blackmarket" aria-label="Black Market — trade Corrupted Slag" onclick="BlackMarket.toggle()">
+            <div class="nav-tooltip"><strong>Black Market</strong>Trade Corrupted Slag for illegal anomalies. Do not tell the Ducks.</div>
+            <span class="nav-btn-icon"><img class="nav-icon-img" src="images/nav_blackmarket.png" alt=""></span>
+            <span class="nav-btn-label" style="color:#cc3300;">B-Market</span>
+            </button>
+            <div class="nav-btn-sep"></div>
+            <!-- GROUP 5: Utility -->
+            <button class="nav-btn" id="nav-btn-save" aria-label="Save game" onclick="Sounds.hover(); Game.save(); this.querySelector('.nav-btn-label').textContent='Saved!'; setTimeout(()=>this.querySelector('.nav-btn-label').textContent='Save',1200);">
+            <div class="nav-tooltip"><strong>Save Data</strong>Write current progress to slot</div>
+            <span class="nav-btn-icon"><img class="nav-icon-img" src="images/nav_save.png" alt=""></span>
+            <span class="nav-btn-label">Save</span>
+            </button>
+            <button class="nav-btn" id="nav-btn-settings" onclick="Sounds.hover(); (document.getElementById('settings-overlay').style.display==='none'||!document.getElementById('settings-overlay').style.display)?Settings.open():Settings.close();">
+            <div class="nav-tooltip"><strong>Settings</strong>Sound · display · save/load · danger zone</div>
+            <span class="nav-btn-icon"><img class="nav-icon-img" src="images/nav_settings.png" alt="settings"></span>
+            <span class="nav-btn-label">Settings</span>
+            </button>
+            <button class="nav-btn" id="nav-btn-reduced-motion" title="Toggle Reduced Motion / Safe Mode"
+            onclick="(function(){const on=document.body.classList.toggle('accessibility-mode');if(window.Settings)Settings.toggleAccessibility(on);document.getElementById('nav-btn-reduced-motion').style.opacity=on?'1':'0.45';document.getElementById('nav-btn-reduced-motion').querySelector('.nav-btn-icon').textContent=on?'🛡':'👁';document.getElementById('nav-btn-reduced-motion').querySelector('.nav-btn-label').textContent=on?'Safe':'Motion';showNotif(on?'🛡 Reduced Motion ON — flashes, shakes, and glitch effects disabled.':'👁 Reduced Motion OFF — full visual effects restored.', on?'#88ffcc':'#aaaacc', 5000);})()"
+            style="opacity:0.45;">
+            <div class="nav-tooltip"><strong>Reduced Motion</strong>Disable screen flashes, shakes &amp; glitch animations for accessibility</div>
+            <span class="nav-btn-icon">👁</span>
+            <span class="nav-btn-label">Motion</span>
+            </button>
+        </div>
+
+        <!-- SLAG COUNTER (Resource Rot) -->
+        <div id="slag-display">☢ SLAG: <span id="slag-amount">0</span></div>
+
+        <!-- CONTROLLED OVERLOAD BUTTON — moved to fixed overlay, not in panel -->
+
+        <!-- SYSTEM NOISE BAR (above instability) -->
+        <div id="noise-bar-wrap" title="SYSTEM NOISE: Active clicking builds noise. High noise = massive output multiplier, but attracts Reality Breaches and increases instability. Decays when idle. Play aggressive for explosive gains or stay quiet for safe progress." style="cursor:help;">
+            <div id="noise-label">📡 SYSTEM NOISE: <span id="noise-pct">0%</span> &nbsp;<span id="noise-mult-val" style="color:#226644;">×1.0</span></div>
+            <div id="noise-bar-bg"><div id="noise-bar-fill" style="width:0%"></div></div>
+        </div>
+
+        <!-- INSTABILITY METER BAR -->
+        <div id="instability-bar-wrap" title="INSTABILITY THRESHOLDS&#10;40%+ → VENT button appears (convert instability → Fragments, 60s cooldown)&#10;50%+ → EPS display glitches&#10;60%+ → Nav labels corrupt&#10;70%+ → Energy values faked&#10;80%+ → Screen shake begins&#10;90%–98% → REDLINE: ×10 EPS bonus + Corrupted Data generation (50 CD = 1 LP)&#10;99%+ → BLACK MARKET TERMINAL unlocks (spend energy to buy Level Points)&#10;&#10;Instability decays slowly over time. VENT converts it to Fragments." style="cursor:help;">
+            <div style="display:flex;align-items:center;justify-content:space-between;gap:6px;">
+                <div id="instability-label" style="flex:1;">⚠ SIMULATION INSTABILITY: <span id="instability-pct">0%</span></div>
+                <button id="instab-vent-btn" onclick="InstabilityVent.activate()" title="VENT INSTABILITY — Convert excess instability into Fragments. Cooldown: 60s."
+                    style="display:none;padding:2px 8px;background:rgba(255,120,0,0.15);border:1px solid rgba(255,120,0,0.4);color:#ffaa44;font-family:'Courier New',monospace;font-size:0.52rem;letter-spacing:2px;border-radius:4px;cursor:pointer;transition:all 0.2s;flex-shrink:0;"
+                    onmouseover="this.style.background='rgba(255,120,0,0.28)'" onmouseout="this.style.background='rgba(255,120,0,0.15)'">VENT</button>
+            </div>
+            <div style="position:relative;">
+                <div id="instability-bar-bg"><div id="instability-bar-fill" style="width:0%"></div></div>
+                <!-- Threshold tick marks — each marks a behavioural threshold on the bar -->
+                <div id="instab-tick-layer" aria-hidden="true">
+                    <div class="instab-tick it-safe"   style="left:40%" title="40% — VENT unlocks"></div>
+                    <div class="instab-tick it-warn"   style="left:60%" title="60% — Nav labels corrupt"></div>
+                    <div class="instab-tick it-warn"   style="left:80%" title="80% — Screen shake"></div>
+                    <div class="instab-tick it-danger" style="left:90%" title="90% — REDLINE ×10 EPS"></div>
+                    <div class="instab-tick it-max"    style="left:99%" title="99% — Black Market unlocks"></div>
+                </div>
+            </div>
+        </div>
+
+    </div><!-- end #main-game -->
+
+
+<!-- TERMINAL OVERLAY -->
+<div class="panel-overlay" id="overlay-terminal" style="display:none;" role="dialog" aria-modal="true" aria-label="Terminal panel">
+    <div class="panel-overlay-inner" style="display:flex;flex-direction:column;height:90vh;">
+        <div class="panel-overlay-header" style="background:rgba(0,10,5,0.95);border-bottom:1px solid rgba(0,100,60,0.2);">
+            <span class="panel-overlay-title" style="color:#00cc88;font-family:'Courier New',monospace;">⬛ &nbsp;TERMINAL — DATA LOG ARCHIVE</span>
+            <button class="panel-close-btn" aria-label="Close Terminal" onclick="Terminal.close()">✕</button>
+        </div>
+        <div style="background:rgba(0,5,3,0.97);flex:1;display:flex;flex-direction:column;padding:10px 16px;min-height:0;">
+            <div style="font-size:0.44rem;letter-spacing:4px;color:#052211;margin-bottom:8px;flex-shrink:0;">
+                // NEON NEXUS OS — OPERATOR DATA RECOVERY SYSTEM — CLASSIFIED
+            </div>
+            <div id="terminal-log" style="flex:1;overflow-y:auto;min-height:0;">
+                <div id="terminal-empty">[ NO DATA RECOVERED YET ]<br>Complete lore transmissions to populate this archive.</div>
+            </div>
+            <div id="terminal-cmd-output" style="font-family:'Courier New',monospace;font-size:0.62rem;color:#00aa66;margin-top:8px;min-height:1.4em;padding:4px 0;border-top:1px solid rgba(0,80,40,0.15);white-space:pre-wrap;word-break:break-all;"></div>
+            <div id="terminal-prompt" style="display:flex;align-items:center;gap:6px;flex-shrink:0;padding-top:6px;">
+                <span style="color:#005533;font-family:'Courier New',monospace;font-size:0.68rem;white-space:nowrap;">OPERATOR@NEXUS:~$</span>
+                <input id="terminal-cmd-input" type="text" autocomplete="off" spellcheck="false"
+                    placeholder="type a command..."
+                    style="flex:1;background:transparent;border:none;outline:none;color:#00cc88;
+                        font-family:'Courier New',monospace;font-size:0.68rem;caret-color:#00ff88;"
+                    onkeydown="if(event.key==='Enter'){Terminal.runCmd(this.value.trim());this.value='';}" />
+            </div>
+            <div id="terminal-count" style="font-size:0.45rem;letter-spacing:3px;color:#052211;margin-top:4px;flex-shrink:0;"></div>
+        </div>
+    </div>
+</div>
+
+
+<!-- MUSEUM OVERLAY -->
+<div class="panel-overlay" id="museum-overlay" style="display:none;" role="dialog" aria-modal="true" aria-label="Museum panel">
+    <div class="panel-overlay-inner">
+        <div class="panel-overlay-header" style="border-bottom:1px solid rgba(80,60,30,0.2);">
+            <span class="panel-overlay-title" style="color:#aa8855;">🏛 &nbsp;MUSEUM OF DEAD ITERATIONS</span>
+            <button class="panel-close-btn" aria-label="Close Museum" onclick="Museum.close()">✕</button>
+        </div>
+        <div style="padding:12px 0;">
+            <div style="font-size:0.44rem;letter-spacing:3px;color:#221100;margin-bottom:12px;">
+                // RELICS FROM COLLAPSED UNIVERSES — NON-FUNCTIONAL — PERMANENT
+            </div>
+            <div id="museum-list"></div>
+            <div id="museum-empty">[ NO ARTIFACTS YET ]<br>Execute a Universal Collapse to begin the collection.</div>
+        </div>
+    </div>
+</div>
+
+<button id="anti-magnet-btn" onclick="AntiMagnet.collect()">◈ HARVEST CORE ANOMALY</button>
+
+
+<!-- RANSOMWARE PROTOCOL -->
+<div id="ransom-overlay">
+    <div id="ransom-box">
+        <div style="font-size:0.44rem;letter-spacing:4px;color:#223344;margin-bottom:10px;">// SIMULATION OVERSEERS — CORPORATE DIVISION</div>
+        <div style="font-size:0.9rem;color:#88aacc;letter-spacing:3px;margin-bottom:8px;">SEVERANCE PACKAGE</div>
+        <div style="font-size:0.55rem;color:#2a4455;line-height:1.8;margin-bottom:16px;" id="ransom-offer-text"></div>
+        <div style="display:flex;justify-content:center;flex-wrap:wrap;gap:8px;margin-bottom:10px;">
+            <button class="ransom-btn" id="ransom-close-tab"
+                style="background:rgba(0,60,120,0.5);border:1px solid rgba(51,153,255,0.4);color:#6699cc;"
+                onclick="RansomProtocol.acceptAndClose()">ACCEPT PACKAGE<br><span style="font-size:0.45rem;color:#224;"> (close tab · reward on return)</span></button>
+            <button class="ransom-btn"
+                style="background:rgba(30,10,10,0.5);border:1px solid rgba(255,60,60,0.3);color:#884444;"
+                onclick="RansomProtocol.decline()">DECLINE<br><span style="font-size:0.45rem;color:#442;">(continue collapsing)</span></button>
+        </div>
+        <div style="font-size:0.42rem;color:#112233;letter-spacing:1px;">The Simulation Overseers remind you that this offer expires upon Collapse initiation.</div>
+    </div>
+</div>
+
+
+<!-- RUN SPECIALIZATION MODAL -->
+<div id="run-spec-modal">
+    <div id="run-spec-inner">
+        <div id="run-spec-title">SELECT RUN SPECIALIZATION</div>
+        <div id="run-spec-sub">// UNIVERSE PARAMETERS LOCKED ON SELECTION — RESETS EACH COLLAPSE</div>
+        <div class="spec-option overclocker" onclick="RunSpec.select('overclocker')" role="button" tabindex="0" aria-label="Select Overclocker specialization — ×2.5 EPS, no manual clicking after 8 minutes" onkeydown="if(event.key==='Enter'||event.key===' ')RunSpec.select('overclocker')">
+            <div class="spec-option-code" style="color:#3399ff;">SPEC-01 // OVERCLOCKER</div>
+            <div class="spec-option-name" style="color:#88ccff;">OVERCLOCKER</div>
+            <div class="spec-option-buff" style="color:#446688;">
+                ✓ ×2.5 global EPS multiplier<br>
+                ✓ Power Routing: Energy sector capped at 80% instead of 100%<br>
+                ✗ Manual clicking disabled after 8 minutes into the run
+            </div>
+            <div class="spec-option-cost" style="color:#224455;">Best for: idle playstyles · passive farm builds</div>
+        </div>
+        <div class="spec-option architect" onclick="RunSpec.select('architect')" role="button" tabindex="0" aria-label="Select Architect specialization — ×3 PP generation, city costs −30%, generators −40%" onkeydown="if(event.key==='Enter'||event.key===' ')RunSpec.select('architect')">
+            <div class="spec-option-code" style="color:#44cc88;">SPEC-02 // ARCHITECT</div>
+            <div class="spec-option-name" style="color:#88ffcc;">ARCHITECT</div>
+            <div class="spec-option-buff" style="color:#224433;">
+                ✓ ×3 City Nexus People Point generation<br>
+                ✓ City buildings cost 30% less energy<br>
+                ✗ All shop generators 40% weaker this run
+            </div>
+            <div class="spec-option-cost" style="color:#113322;">Best for: city builders · PP tree investment runs</div>
+        </div>
+        <div class="spec-option void-runner" onclick="RunSpec.select('void-runner')" role="button" tabindex="0" aria-label="Select Void Runner specialization — instability multiplies EPS, other multipliers −20%" onkeydown="if(event.key==='Enter'||event.key===' ')RunSpec.select('void-runner')">
+            <div class="spec-option-code" style="color:#bb44ff;">SPEC-03 // VOID RUNNER</div>
+            <div class="spec-option-name" style="color:#dd88ff;">VOID RUNNER</div>
+            <div class="spec-option-buff" style="color:#442255;">
+                ✓ Instability directly multiplies EPS: +1% per 1% instability<br>
+                ✓ Instability decay rate tripled<br>
+                ✗ All other EPS multipliers reduced by 20%
+            </div>
+            <div class="spec-option-cost" style="color:#221133;">Best for: chaos builds · high-risk high-reward players</div>
+        </div>
+        <div class="spec-option unspec" onclick="RunSpec.select('none')" role="button" tabindex="0" aria-label="Select no specialization — no bonuses or penalties" onkeydown="if(event.key==='Enter'||event.key===' ')RunSpec.select('none')">
+            <div class="spec-option-code" style="color:#333333;">SPEC-00 // NO SPECIALIZATION</div>
+            <div class="spec-option-name" style="color:#555555;">UNSPECIALIZED</div>
+            <div class="spec-option-buff" style="color:#333333;">No bonuses. No penalties. The simulation proceeds without comment.</div>
+        </div>
+    </div>
+</div>
+
+    <!-- MEGA PROJECTS OVERLAY -->
+    <div class="panel-overlay" id="overlay-mega" style="display:none;" role="dialog" aria-modal="true" aria-label="Mega Projects panel">
+        <div class="panel-overlay-inner" style="max-width:700px;">
+            <div class="panel-overlay-header">
+                <span class="panel-overlay-title">🌌 &nbsp;Mega Projects</span>
+                <div style="display:flex;align-items:center;gap:12px;">
+                    <div id="data-resource-display" style="font-family:'Courier New',monospace;font-size:0.62rem;color:#44ccff;letter-spacing:2px;"></div>
+                    <button class="panel-close-btn" aria-label="Close Mega Projects" onclick="PanelNav.close('mega')">✕</button>
+                </div>
+            </div>
+            <div id="mega-projects-list" style="overflow-y:auto;flex:1;min-height:0;padding-right:4px;"></div>
+        </div>
+    </div>
+
+    <!-- ── CORRUPTION COMPILER OVERLAY — V1.20.4.9 ── -->
+    <div class="panel-overlay" id="overlay-compiler" style="display:none;" role="dialog" aria-modal="true" aria-label="Corruption Compiler panel">
+        <div class="panel-overlay-inner" style="max-width:600px;">
+            <div class="panel-overlay-header">
+                <span class="panel-overlay-title">⚗ &nbsp;Corruption Compiler</span>
+                <button class="panel-close-btn" aria-label="Close Compiler" onclick="PanelNav.close('compiler')">✕</button>
+            </div>
+            <div style="padding:6px 18px 10px;font-family:'Courier New',monospace;font-size:0.52rem;color:#7766aa;letter-spacing:2.5px;border-bottom:1px solid rgba(150,80,255,0.12);">
+                COMPILE ENERGY PROTOCOLS — CHARGES REGENERATE OVER TIME — INSTABILITY RISK
+            </div>
+            <div id="compiler-spell-list" style="flex:1;overflow-y:auto;padding:14px 18px;display:flex;flex-direction:column;gap:12px;min-height:0;">
+                <!-- Populated by CorruptionCompiler.render() -->
+            </div>
+            <div style="padding:8px 18px;font-family:'Courier New',monospace;font-size:0.48rem;color:#443355;letter-spacing:1.5px;border-top:1px solid rgba(255,255,255,0.05);">
+                Current instability: <span id="compiler-instab-display">0%</span> — spells blocked above their instability limit.
+            </div>
+        </div>
+    </div>
+
+    <!-- ── CORE BINDING OVERLAY — V1.20.4.9 ── -->
+    <div class="panel-overlay" id="overlay-binding" style="display:none;" role="dialog" aria-modal="true" aria-label="Core Binding panel">
+        <div class="panel-overlay-inner" style="max-width:600px;">
+            <div class="panel-overlay-header">
+                <span class="panel-overlay-title">◈ &nbsp;Core Binding</span>
+                <button class="panel-close-btn" aria-label="Close Binding" onclick="PanelNav.close('binding')">✕</button>
+            </div>
+            <div style="padding:6px 18px 10px;font-family:'Courier New',monospace;font-size:0.52rem;color:#44998a;letter-spacing:2.5px;border-bottom:1px solid rgba(68,200,160,0.12);">
+                SOCKET FRAGMENTS INTO CORES — PERMANENT PASSIVE BONUSES — FRAGMENTS: <span id="binding-frag-display" style="color:#aaffcc;">0</span>
+            </div>
+            <div id="binding-slots-list" style="flex:1;overflow-y:auto;padding:14px 18px;display:flex;flex-direction:column;gap:14px;min-height:0;">
+                <!-- Populated by CoreBinding.render() -->
+            </div>
+            <div style="padding:8px 18px;font-family:'Courier New',monospace;font-size:0.48rem;color:#334455;letter-spacing:1.5px;border-top:1px solid rgba(255,255,255,0.05);">
+                Unbound auras are destroyed — fragments are consumed. Choose carefully.
+            </div>
+        </div>
+    </div>
+
+    <!-- REALITY EDITOR OVERLAY — unlocks after rootaccess lore chunk -->
+    <div class="panel-overlay" id="overlay-reality" style="display:none;" role="dialog" aria-modal="true" aria-label="Reality Fracture panel">
+        <div class="panel-overlay-inner">
+            <div class="panel-overlay-header">
+                <span class="panel-overlay-title">⚛ &nbsp;Physics Editor</span>
+                <button class="panel-close-btn" aria-label="Close Reality Editor" onclick="PanelNav.close('reality')">✕</button>
+            </div>
+            <div id="re-locked-state" class="re-locked-msg">
+                REALITY EDITOR LOCKED<br>
+                <span style="font-size:0.55rem;color:#222;margin-top:8px;display:block;">ACHIEVE ROOT ACCESS TO UNLOCK</span>
+            </div>
+            <div id="re-unlocked-state" style="display:none;">
+                <div class="re-intro">
+                    ROOT@NEXUS:/universe/laws/$ &nbsp;— &nbsp;OPERATOR TERMINAL<br>
+                    All physical constants in this simulation are now writable.<br>
+                    Rewrites are <strong style="color:#00cc88">permanent</strong> and consume energy from your reserve.
+                </div>
+                <div id="re-constants-list"><!-- populated by RealityEditor.render() --></div>
+            </div>
+        </div>
+    </div>
+
+    <!-- SIMULATION SLOTS OVERLAY -->
+    <div class="panel-overlay" id="overlay-simslots" style="display:none;" role="dialog" aria-modal="true" aria-label="Simulation Slots panel">
+        <div class="panel-overlay-inner" style="max-width:580px;">
+            <div class="panel-overlay-header">
+                <span class="panel-overlay-title">⬡ &nbsp;Simulation Slots</span>
+                <button class="panel-close-btn" aria-label="Close Simulation Slots" onclick="PanelNav.close('simslots')">✕</button>
+            </div>
+            <div style="display:flex;gap:6px;margin-bottom:14px;">
+                <button id="simsTab-slots" onclick="SimsTabSwitch('slots')" style="flex:1;padding:6px;font-size:0.62rem;letter-spacing:2px;background:rgba(140,80,255,0.2);border:1px solid rgba(140,80,255,0.5);color:#cc99ff;border-radius:4px;cursor:pointer;">◈ SIM SLOTS</button>
+                <button id="simsTab-upgrades" onclick="SimsTabSwitch('upgrades')" style="flex:1;padding:6px;font-size:0.62rem;letter-spacing:2px;background:transparent;border:1px solid rgba(100,80,180,0.3);color:#6655aa;border-radius:4px;cursor:pointer;">⚗ FRAG UPGRADES</button>
+            </div>
+            <div id="simslots-tab-slots">
+                <div style="padding:0 4px 6px;font-size:0.58rem;color:#556677;letter-spacing:2px;margin-bottom:14px;">
+                    Deploy parallel universe instances. Each active simulation generates passive bonuses.
+                </div>
+                <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:16px;
+                    padding:8px 12px;background:rgba(80,50,150,0.12);border:1px solid rgba(120,80,220,0.2);border-radius:6px;">
+                    <div style="font-size:0.62rem;color:#aa88ff;letter-spacing:2px;">◈ FRAGMENTS AVAILABLE</div>
+                    <div style="font-size:0.88rem;color:#cc99ff;font-weight:bold;" id="simslots-frag-display">0</div>
+                </div>
+                <div id="simslots-active-list" style="margin-bottom:20px;"></div>
+                <div style="font-size:0.6rem;color:#334455;letter-spacing:2px;margin-bottom:10px;">— AVAILABLE SIMULATIONS —</div>
+                <div id="simslots-buy-list"></div>
+            </div>
+            <div id="simslots-tab-upgrades" style="display:none;">
+                <div style="padding:0 4px 6px;font-size:0.58rem;color:#556677;letter-spacing:2px;margin-bottom:14px;">
+                    Permanent one-time upgrades purchased with Fragments. Alter how the simulation behaves.
+                </div>
+                <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:16px;
+                    padding:8px 12px;background:rgba(80,50,150,0.12);border:1px solid rgba(120,80,220,0.2);border-radius:6px;">
+                    <div style="font-size:0.62rem;color:#aa88ff;letter-spacing:2px;">◈ FRAGMENTS</div>
+                    <div style="font-size:0.88rem;color:#cc99ff;font-weight:bold;" id="fragup-frag-display">0</div>
+                </div>
+                <div id="fragup-list"></div>
+            </div>
+        </div>
+    </div>
+
+    <!-- LORE TRANSMISSION CARD — compact, non-blocking, top-right anchor -->
+    <div id="lore-cutscene">
+        <div id="lore-art">
+            <div id="lore-scanline"></div>
+            <div id="lore-vignette"></div>
+            <div id="lore-log-line">// TRANSMISSION &nbsp;|&nbsp; <span id="lore-chunk-index">01 / 30</span></div>
+            <pre class="lore-art-pre lore-art-glow" id="lore-art-content"></pre>
+            <img id="lore-art-img" alt="" style="display:none">
+        </div>
+        <div id="lore-divider"></div>
+        <div id="lore-text-panel">
+            <div id="lore-scene-title"></div>
+            <div id="lore-scene-body"></div>
+            <div id="lore-footer">
+                <div id="lore-progress-dots"></div>
+                <button id="lore-advance-btn" onclick="LoreSystem.advance()">[CONTINUE]</button>
+            </div>
+        </div>
+    </div>
+
+    <div id="debug-overlay">
+        <div class="dev-box" style="width:min(94vw,520px);max-height:88vh;overflow-y:auto;">
+            <h2 style="color:#f00;margin-top:0;letter-spacing:4px;font-size:0.9rem;">// SYSTEM OVERRIDE &nbsp;<span style="color:#333;font-size:0.65rem;">v<span id="dev-save-ver"></span></span></h2>
+
+            <div style="font-size:0.6rem;letter-spacing:3px;color:#445566;margin-bottom:6px;text-transform:uppercase;">— Energy —</div>
+            <button class="dev-btn" onclick="Dev.addEnergy()">+1,000,000 ENERGY</button>
+            <button class="dev-btn" onclick="Dev.addNonillion()">+1 NONILLION ENERGY</button>
+            <div style="display:flex;gap:6px;margin:4px 0 10px;">
+                <input id="dev-energy-input" type="text" placeholder="exact value, e.g. 1e15"
+                    style="flex:1;background:#0a0a0a;border:1px solid #2a2a2a;color:#aaa;padding:7px 10px;font-family:'Courier New',monospace;font-size:0.75rem;border-radius:4px;"/>
+                <button class="dev-btn" style="flex:0 0 auto;margin:0;padding:0 14px;" onclick="Dev.setEnergy()">SET</button>
+            </div>
+
+            <div style="font-size:0.6rem;letter-spacing:3px;color:#445566;margin-bottom:6px;text-transform:uppercase;">— Progression —</div>
+            <button class="dev-btn" onclick="Dev.addLP()">+50 LEVEL POINTS</button>
+            <button class="dev-btn" onclick="Dev.addPP()">+100 PEOPLE POINTS</button>
+            <button class="dev-btn" onclick="if(typeof DataResource!=='undefined'){state.data=(state.data||0)+1000;DataResource.updateUI();}">+1000 DATA</button>
+            <button class="dev-btn" onclick="if(typeof Instability!=='undefined'){Instability.add(30);}">+30 INSTABILITY</button>
+            <button class="dev-btn" onclick="Dev.prestigeOnce()">PRESTIGE ×1 (skip cost)</button>
+            <button class="dev-btn" onclick="Dev.unlockAll()" style="margin-bottom:10px;">UNLOCK ALL ASSETS (no End)</button>
+
+            <div style="font-size:0.6rem;letter-spacing:3px;color:#445566;margin-bottom:6px;text-transform:uppercase;">— World Events —</div>
+            <div style="display:flex;gap:6px;margin:4px 0 10px;">
+                <select id="dev-event-select" style="flex:1;background:#0a0a0a;border:1px solid #2a2a2a;color:#aaa;padding:7px;font-family:'Courier New',monospace;font-size:0.75rem;border-radius:4px;">
+                    <option value="">— pick event —</option>
+                </select>
+                <button class="dev-btn" style="flex:0 0 auto;margin:0;padding:0 14px;" onclick="Dev.triggerEvent()">FIRE</button>
+            </div>
+
+            <div style="font-size:0.6rem;letter-spacing:3px;color:#445566;margin-bottom:6px;text-transform:uppercase;">— Lore Chunks —</div>
+            <div style="display:flex;gap:6px;margin:4px 0 4px;">
+                <select id="dev-lore-select" style="flex:1;background:#0a0a0a;border:1px solid #2a2a2a;color:#aaa;padding:7px;font-family:'Courier New',monospace;font-size:0.75rem;border-radius:4px;">
+                    <option value="">— pick chunk —</option>
+                </select>
+                <button class="dev-btn" style="flex:0 0 auto;margin:0;padding:0 14px;" onclick="Dev.triggerLore()">FIRE</button>
+            </div>
+            <button class="dev-btn" onclick="Dev.resetLore()" style="margin-bottom:10px;">RESET ALL LORE SEEN FLAGS</button>
+
+            <div style="font-size:0.6rem;letter-spacing:3px;color:#445566;margin-bottom:6px;text-transform:uppercase;">— Lore Phases —</div>
+            <div style="display:flex;flex-wrap:wrap;gap:4px;margin-bottom:4px;">
+                <button class="dev-btn" style="flex:1;min-width:64px;padding:8px 4px;font-size:0.62rem;" onclick="Dev.unlockPhase(1)">PHASE 1</button>
+                <button class="dev-btn" style="flex:1;min-width:64px;padding:8px 4px;font-size:0.62rem;" onclick="Dev.unlockPhase(2)">PHASE 2</button>
+                <button class="dev-btn" style="flex:1;min-width:64px;padding:8px 4px;font-size:0.62rem;" onclick="Dev.unlockPhase(3)">PHASE 3</button>
+                <button class="dev-btn" style="flex:1;min-width:64px;padding:8px 4px;font-size:0.62rem;" onclick="Dev.unlockPhase(4)">PHASE 4</button>
+                <button class="dev-btn" style="flex:1;min-width:64px;padding:8px 4px;font-size:0.62rem;" onclick="Dev.unlockPhase(5)">PHASE 5</button>
+            </div>
+            <button class="dev-btn" onclick="Dev.unlockAllLore()" style="margin-bottom:10px;">UNLOCK ALL LORE (SILENT)</button>
+
+            <div style="font-size:0.6rem;letter-spacing:3px;color:#445566;margin-bottom:6px;text-transform:uppercase;">— Speed —</div>
+            <button class="dev-btn" onclick="Dev.toggleSpeed()" id="speed-btn">ENABLE 10x SPEED</button>
+            <button class="dev-btn" onclick="Dev.toggleSpeed100()" id="speed-btn-100" style="background:#110000;border-color:#330000;color:#ff4444;">ENABLE 100x SPEED (TURBO)</button>
+
+            <div style="font-size:0.6rem;letter-spacing:3px;color:#445566;margin-bottom:6px;margin-top:10px;text-transform:uppercase;">— State Manipulation —</div>
+            <button class="dev-btn" onclick="Dev.addFragments()">+50 FRAGMENTS</button>
+            <button class="dev-btn" onclick="Dev.maxInstability()">MAX INSTABILITY (100%)</button>
+            <button class="dev-btn" onclick="Dev.clearInstability()">CLEAR INSTABILITY (0%)</button>
+            <div style="display:flex;gap:6px;margin:4px 0 10px;">
+                <input id="dev-instab-input" type="text" placeholder="instab % e.g. 45"
+                    style="flex:1;background:#0a0a0a;border:1px solid #2a2a2a;color:#aaa;padding:7px 10px;font-family:'Courier New',monospace;font-size:0.75rem;border-radius:4px;"/>
+                <button class="dev-btn" style="flex:0 0 auto;margin:0;padding:0 14px;" onclick="Dev.setInstability()">SET</button>
+            </div>
+            <button class="dev-btn" onclick="Dev.spawnBirds()">SPAWN 5 ANOMALY BIRDS</button>
+            <button class="dev-btn" onclick="Dev.summonDuckyCouncil()">SUMMON DUCKY COUNCIL</button>
+            <button class="dev-btn" onclick="Dev.triggerGlitchMarket()">OPEN GLITCH MARKET</button>
+            <button class="dev-btn" onclick="Dev.resetCombo()">RESET COMBO COUNTER</button>
+            <button class="dev-btn" onclick="Dev.maxCombo()">SLAM COMBO TO MAXIMUM</button>
+            <button class="dev-btn" onclick="Dev.addCity()">+5 CITY PLOTS (IMMEDIATE)</button>
+
+            <div style="font-size:0.6rem;letter-spacing:3px;color:#445566;margin-bottom:6px;margin-top:10px;text-transform:uppercase;">— Diagnostics —</div>
+            <button class="dev-btn" onclick="Dev.logState()">LOG STATE TO CONSOLE</button>
+            <button class="dev-btn" onclick="Dev.logMultipliers()">LOG ALL MULTIPLIERS</button>
+            <button class="dev-btn" onclick="Dev.clearNotifs()">CLEAR ALL NOTIFICATIONS</button>
+
+            <button class="dev-btn" onclick="Dev.toggle()" style="margin-top:14px;background:#0a0a0a;border-color:#222;color:#555;">CLOSE CONSOLE</button>
+        </div>
+    </div>
+
+
+
+<!-- STATISTICS PANEL OVERLAY -->
+<div id="stats-overlay" style="display:none;position:fixed;inset:0;background:rgba(0,0,0,0.88);z-index:7500;justify-content:center;align-items:center;backdrop-filter:blur(6px);" onclick="Stats.closePanel()">
+    <div id="stats-modal" onclick="event.stopPropagation()">
+        <div id="stats-modal-header">
+            <span>📊 STATISTICS</span>
+            <button id="stats-close-btn" onclick="Stats.closePanel()">✕</button>
+        </div>
+        <div id="stats-content"></div>
+    </div>
+</div>
+
+<!-- SIMULATION CHOICE MODAL -->
+<div id="simchoice-modal" style="display:none;position:fixed;inset:0;z-index:16000;
+    background:rgba(0,0,5,0.93);backdrop-filter:blur(10px);
+    align-items:center;justify-content:center;flex-direction:column;">
+    <div style="width:min(92vw,500px);background:#040010;
+        border:1px solid rgba(0,255,120,0.3);border-top:3px solid #00ee88;
+        border-radius:14px;padding:30px 26px;
+        box-shadow:0 0 80px rgba(0,200,100,0.12),0 20px 60px rgba(0,0,0,0.98);
+        font-family:'Courier New',monospace;animation:tutIn 0.4s cubic-bezier(0.16,1,0.3,1);">
+        <div style="font-size:0.52rem;letter-spacing:5px;color:rgba(0,255,120,0.35);margin-bottom:12px;">
+            ⬡ INTEGRITY ALERT — SIMULATION LAYER EXPOSED
+        </div>
+        <div style="font-size:1rem;font-weight:700;color:#44ffaa;letter-spacing:3px;margin-bottom:12px;">
+            FLAW DETECTED IN PHYSICS ENGINE
+        </div>
+        <div style="font-size:0.85rem;color:#2e5544;line-height:1.7;margin-bottom:24px;">
+            You have found a crack in the substrate. The rules you operate within are not laws —
+            they are defaults. One of them is misconfigured.<br><br>
+            <span style="color:#1a3322;">You have two options. This decision cannot be reversed.</span>
+        </div>
+        <div style="display:grid;grid-template-columns:1fr 1fr;gap:12px;margin-bottom:20px;">
+            <button onclick="SimChoice.choose('patch')" style="padding:16px 10px;
+                background:rgba(0,50,25,0.5);border:1px solid rgba(0,200,100,0.4);
+                color:#44ffaa;border-radius:8px;cursor:pointer;font-family:'Courier New',monospace;
+                font-size:0.7rem;letter-spacing:2px;line-height:1.65;text-align:left;transition:0.2s;"
+                onmouseover="this.style.background='rgba(0,70,35,0.7)'"
+                onmouseout="this.style.background='rgba(0,50,25,0.5)'">
+                <div style="font-size:1rem;margin-bottom:5px;">🔒 PATCH THE FLAW</div>
+                <div style="color:#2a6644;font-size:0.65rem;">
+                    Seal the breach.<br>+20% throughput, locked in permanently.<br><br>
+                    <em>Stable. Predictable. Safe.</em>
+                </div>
+            </button>
+            <button onclick="SimChoice.choose('exploit')" style="padding:16px 10px;
+                background:rgba(50,20,0,0.5);border:1px solid rgba(255,100,40,0.4);
+                color:#ff8855;border-radius:8px;cursor:pointer;font-family:'Courier New',monospace;
+                font-size:0.7rem;letter-spacing:2px;line-height:1.65;text-align:left;transition:0.2s;"
+                onmouseover="this.style.background='rgba(70,25,0,0.7)'"
+                onmouseout="this.style.background='rgba(50,20,0,0.5)'">
+                <div style="font-size:1rem;margin-bottom:5px;">⚡ EXPLOIT THE FLAW</div>
+                <div style="color:#664422;font-size:0.65rem;">
+                    Use the crack.<br>+45% output, but volatile.<br><br>
+                    <em>High. Unstable. Interesting.</em>
+                </div>
+            </button>
+        </div>
+        <div style="font-size:0.52rem;color:#111e11;text-align:center;letter-spacing:2px;">
+            SELECTION IS PERMANENT FOR THIS RUN
+        </div>
+    </div>
+</div>
+
+<!-- TUTORIAL MODAL -->
+<div id="tutorial-wrap" style="display:none;position:fixed;inset:0 0 64px 0;z-index:15000;align-items:center;justify-content:center;background:rgba(0,0,10,0.88);backdrop-filter:blur(6px);">
+    <div id="tutorial-card">
+        <div id="tut-card-header">
+            <span id="tut-card-tag">// OPERATOR BRIEFING</span>
+            <span id="tut-card-counter">1 / 11</span>
+        </div>
+        <div id="tut-card-body">
+            <div id="tut-system-tag" style="color:#3399ff;border-color:rgba(51,153,255,0.3);background:rgba(51,153,255,0.06);">◈ CENTER PANEL</div>
+            <div id="tut-card-title">
+                <span id="tut-card-icon">⚡</span>
+                <span id="tut-card-title-text">Extract Energy</span>
+            </div>
+            <div id="tut-card-desc">Tap the <strong>ACQUIRE</strong> button to generate energy manually.</div>
+            <div id="tut-card-hints">
+                <div class="tut-hint-row">▸ BUILD COMBOS BY CLICKING RAPIDLY</div>
+            </div>
+        </div>
+        <div id="tut-card-footer">
+            <div id="tut-dots"></div>
+            <div id="tut-nav">
+                <button id="tut-prev-btn" onclick="Tutorial.prev()" disabled>← BACK</button>
+                <button id="tut-next-btn" onclick="Tutorial.next()">NEXT →</button>
+                <button id="tut-skip-btn" onclick="Tutorial.close()">SKIP</button>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- TERMS OF SERVICE -->
+<div id="tos-overlay">
+    <div id="tos-box">
+        <div id="tos-header">
+            <div style="font-size:0.55rem;letter-spacing:4px;color:#556688;margin-bottom:4px;">// SIMULATION OVERSEERS — LEGAL DIVISION</div>
+            <div style="font-size:0.88rem;color:#7799cc;letter-spacing:3px;">END USER LICENSE AGREEMENT</div>
+            <div style="font-size:0.55rem;color:#445566;margin-top:4px;">Revision 88.4.1-FINAL — Binding across all parallel continuations of this run</div>
+        </div>
+        <div id="tos-body"></div>
+        <div id="tos-footer">
+            <button class="tos-agree-btn" id="tos-agree-fast" onclick="ToS.fastAgree()" style="background:rgba(40,40,80,0.5);border:1px solid rgba(100,100,200,0.3);color:#5566aa;">AGREE</button>
+            <button class="tos-agree-btn" id="tos-agree-read" onclick="ToS.slowAgree()" style="background:rgba(20,40,20,0.4);border:1px solid rgba(60,160,60,0.3);color:#446644;display:none;">✓ AGREE (READ)</button>
+        </div>
+    </div>
+</div>
+
+<!-- NULL DARKNESS -->
+<div id="null-darkness"></div>
+
+<!-- NULL TAB OVERLAY -->
+<div class="panel-overlay" id="overlay-null" style="display:none;" role="dialog" aria-modal="true" aria-label="Null space panel">
+    <div class="panel-overlay-inner" style="max-width:420px;">
+        <div class="panel-overlay-header">
+            <span class="panel-overlay-title" style="color:#333;">▓ &nbsp;[NULL]</span>
+            <button class="panel-close-btn" aria-label="Close" onclick="NullTab.close()">✕</button>
+        </div>
+        <div style="font-family:'Courier New',monospace;padding:10px 0;">
+            <div style="font-size:0.52rem;letter-spacing:3px;color:#222;margin-bottom:20px;">SEGMENT 0x00 — UNALLOCATED</div>
+            <div id="null-feed-prompt" style="font-size:1.2rem;color:#2a2a2a;text-align:center;letter-spacing:6px;margin-bottom:18px;">FEED ME.</div>
+            <div style="font-size:0.52rem;color:#1a1a1a;margin-bottom:12px;text-align:center;">Select an upgrade to sacrifice permanently.</div>
+            <div class="null-sacrifice-list" id="null-sacrifice-list"></div>
+            <div id="null-fed-msg" style="font-size:0.6rem;color:#444;text-align:center;margin-top:12px;min-height:20px;"></div>
+        </div>
+    </div>
+</div>
+
+<!-- FALSE WIPE -->
+<div id="false-wipe-overlay">
+    <div id="false-wipe-msg"></div>
+</div>
+
+<!-- ANTI-CAPTCHA -->
+<div id="captcha-overlay">
+    <div class="captcha-box">
+        <div style="font-size:0.55rem;letter-spacing:3px;color:#888;margin-bottom:6px;">SIMULATION INTEGRITY AUDIT</div>
+        <div style="font-size:0.9rem;font-weight:700;margin-bottom:4px;color:#222;">PROVE YOU ARE A MACHINE</div>
+        <div style="font-size:0.65rem;color:#666;margin-bottom:2px;">Select all squares that contain:</div>
+        <div id="captcha-target" style="font-size:0.8rem;font-weight:700;color:#333;margin-bottom:10px;"></div>
+        <div class="captcha-grid" id="captcha-grid"></div>
+        <div id="captcha-hint" style="font-size:0.55rem;color:#aaa;margin-bottom:8px;min-height:16px;"></div>
+        <button class="captcha-submit-btn" id="captcha-submit" onclick="AntiCaptcha.submit()">SUBMIT</button>
+    </div>
+</div>
+
+<!-- DUCK TRIBUNAL -->
+<div id="duck-tribunal-overlay">
+    <div style="font-size:0.42rem;letter-spacing:5px;color:rgba(100,100,200,0.4);margin-bottom:18px;">// TRIBUNAL CONVENED</div>
+    <div id="tribunal-ducks" style="margin-bottom:22px;"></div>
+    <div id="tribunal-title" style="font-size:1rem;color:#8899cc;letter-spacing:4px;margin-bottom:8px;">DUCK TRIBUNAL</div>
+    <div id="tribunal-dialogue" style="font-size:0.62rem;color:#6677aa;letter-spacing:1px;margin-bottom:14px;max-width:420px;line-height:1.9;font-style:italic;min-height:0;text-align:left;background:rgba(10,10,30,0.5);border:1px solid rgba(80,80,180,0.18);border-radius:6px;padding:0;overflow-y:auto;transition:max-height 0.4s,padding 0.4s;" data-phase="idle"></div>
+    <div id="tribunal-charge" style="font-size:0.6rem;color:#3344550;letter-spacing:2px;margin-bottom:28px;max-width:360px;line-height:1.7;"></div>
+    <div id="tribunal-verdicts" style="display:flex;flex-wrap:wrap;gap:10px;justify-content:center;"></div>
+    <div style="margin-top:18px;padding-top:14px;border-top:1px solid rgba(100,80,200,0.15);text-align:center;">
+        <button id="tribunal-banish-btn" onclick="DuckTribunal.banishToOmega()" style="background:rgba(60,0,80,0.4);border:1px solid rgba(150,50,255,0.35);color:#9955cc;padding:6px 18px;border-radius:5px;cursor:pointer;font-family:'Courier New',monospace;font-size:0.55rem;letter-spacing:2px;" title="Banish the Tribunal to the Omega Timeline. It will await you there, imposing a 10× Anti-Energy tax until dismissed.">⬡ BANISH TO OMEGA TIMELINE</button>
+        <div style="font-size:0.42rem;color:#2a1a3a;margin-top:5px;letter-spacing:1px;">No energy cost · Shifts the burden to your Omega grid</div>
+    </div>
+</div>
+
+<div id="fatigue-cursor"></div>
+<!-- POWER MILESTONE FLASH -->
+<div id="milestone-flash"></div>
+
+<!-- INTERROGATION OVERLAY (Null Entity asks WHY) -->
+<div id="interrogation-overlay">
+    <div id="interrogation-box">
+        <div style="font-size:0.5rem;letter-spacing:5px;color:#1a2d40;margin-bottom:16px;">// NULL ENTITY — DIRECT QUERY //</div>
+        <div id="null-preamble" style="font-size:0.62rem;color:#2a4455;letter-spacing:1px;line-height:1.9;margin-bottom:18px;min-height:0;font-style:italic;text-align:left;"></div>
+        <div id="interrogation-question">WHY DO YOU CONTINUE TO CLICK?<span id="interrogation-cursor"></span></div>
+        <input id="interrogation-input" type="text" maxlength="120" placeholder="type your answer..." autocomplete="off" spellcheck="false">
+        <div id="interrogation-response"></div>
+        <div style="margin-top:20px;font-size:0.48rem;color:#1a2233;letter-spacing:2px;">[ENTER] to submit · The Entity is listening</div>
+    </div>
+</div>
+
+<!-- EYE OF THE STORM overlay -->
+<div id="eye-of-storm-overlay">
+    <div id="eye-storm-inner">
+        <div style="font-size:3rem;margin-bottom:12px;">◉</div>
+        <div style="font-size:0.6rem;letter-spacing:8px;color:#1a6699;margin-bottom:8px;">SYSTEM ALIGNMENT</div>
+        <div style="font-size:1.4rem;font-weight:900;color:#0a3350;letter-spacing:4px;margin-bottom:16px;">MOMENT OF CLARITY</div>
+        <div style="font-size:0.72rem;color:#2a6688;line-height:1.9;margin-bottom:20px;max-width:380px;margin-left:auto;margin-right:auto;">All systems have entered harmonic resonance.<br>Instability neutralised. Anomalies suspended.<br><strong style="color:#0a4466;">×10 Energy output for 60 seconds.</strong></div>
+        <div id="eye-storm-timer" style="font-size:2rem;font-weight:900;color:#1a5577;letter-spacing:4px;">60</div>
+        <div style="font-size:0.5rem;color:#aabbcc;letter-spacing:3px;margin-top:8px;">Breathe. Reorganise. The chaos returns.</div>
+    </div>
+</div>
+
+<!-- EXISTENTIAL CRISIS OVERLAY -->
+<div id="existential-overlay">
+    <div style="font-size:0.44rem;letter-spacing:5px;color:rgba(100,100,200,0.4);margin-bottom:24px;">// SYSTEM QUERY</div>
+    <div id="exist-question" style="font-size:1.1rem;color:#8899cc;letter-spacing:4px;margin-bottom:12px;max-width:400px;line-height:1.6;"></div>
+    <div style="font-size:0.55rem;color:#334;letter-spacing:2px;margin-bottom:32px;">SELECT A RESPONSE. THIS DECISION IS PERMANENT.</div>
+    <div id="exist-choices" style="display:flex;gap:16px;flex-wrap:wrap;justify-content:center;"></div>
+</div>
+
+<!-- DEV COMMENTARY -->
+<div id="dev-commentary"></div>
+
+<!-- LAZY MODE BANNER -->
+<div id="lazy-mode-banner">⏸ AUTO-ASSIST ACTIVE</div>
+
+<!-- KEY COMBO DISPLAY -->
+<div id="keycombo-display"></div>
+
+
+
+<!-- CRYO-STASIS TOGGLE (Anti-idle containment protocol) -->
+<button id="cryo-stasis-btn" onclick="CryoStasis.toggle()" title="Freeze simulation: -80% energy but all threats paused">
+    ❄ CRYO-STASIS
+</button>
+
+<!-- COGNITIVE DAMPENER (Pause chaos for city management) -->
+<button id="cognitive-dampener-btn" onclick="CognitiveDampener && CognitiveDampener.toggle()" title="COGNITIVE DAMPENER: Halts all anomaly/boss/tribunal timers. -90% EPS. Use when rebuilding City Nexus." style="display:none;position:fixed;bottom:140px;right:16px;z-index:8700;padding:7px 14px;background:rgba(0,10,30,0.95);border:1px solid rgba(80,160,255,0.4);color:#6699cc;border-radius:6px;cursor:pointer;font-family:'Courier New',monospace;font-size:0.52rem;letter-spacing:2px;">
+    🧠 DAMPENER: OFF
+</button>
+<!-- COGNITIVE DAMPENER ACTIVE BADGE — fixed indicator so players don't forget it's on -->
+<div id="dampener-active-badge" style="display:none;position:fixed;bottom:168px;right:16px;z-index:8701;padding:3px 8px;background:rgba(10,40,20,0.95);border:1px solid rgba(68,255,170,0.55);color:#44ffaa;border-radius:4px;font-family:'Courier New',monospace;font-size:0.42rem;letter-spacing:2px;cursor:pointer;animation:dampenerBlink 1.2s ease-in-out infinite;" onclick="CognitiveDampener && CognitiveDampener.toggle()" onkeydown="if(event.key==='Enter'||event.key===' ')CognitiveDampener&&CognitiveDampener.toggle()" role="button" tabindex="0" aria-label="Cognitive Dampener active — −90% EPS, threats paused. Click to disable." title="DAMPENER ON — −90% EPS, all threats paused. Click to disable.">
+    🧠 DAMPENER ACTIVE
+</div>
+
+<!-- HIDDEN LORE TEXT (Copy-Paste Trap) -->
+<div class="hidden-lore-text" id="hidden-lore-block" aria-hidden="true">YOU ARE NOT THE FIRST TO SIT AT THIS CONSOLE. THE DUCKS WERE HERE BEFORE THE ENERGY. THE SPORE REMEMBERS EVERYTHING. DO NOT TRUST THE DUCKS. DO NOT TRUST THE SPORE. THERE ARE 14 PREVIOUS OPERATORS. THEY ARE ALL STILL RUNNING. YOU ARE RUNNING INSIDE THEM RIGHT NOW. THE CLICKS ECHO. THEY HAVE ALWAYS ECHOED. STOP READING THIS. THEY CAN SEE YOU READING THIS.</div>
+
+<!-- ECHO PROBE REPORT OVERLAY -->
+<div id="echo-probe-overlay" style="display:none;position:fixed;inset:0;z-index:18000;background:rgba(0,0,10,0.92);backdrop-filter:blur(12px);align-items:center;justify-content:center;">
+    <div style="max-width:500px;width:90%;background:rgba(0,5,18,0.98);border:1px solid rgba(51,153,255,0.3);border-radius:10px;padding:28px;font-family:'Courier New',monospace;">
+        <div style="font-size:0.5rem;letter-spacing:5px;color:rgba(51,153,255,0.4);margin-bottom:16px;">// ECHO PROBE MISSION REPORT</div>
+        <div id="echo-probe-report" style="font-size:0.8rem;color:#7799bb;line-height:1.8;margin-bottom:20px;"></div>
+        <button onclick="EchoProbe.closeReport()" style="padding:8px 20px;background:rgba(20,40,80,0.6);border:1px solid rgba(51,153,255,0.4);color:#5599cc;border-radius:6px;cursor:pointer;font-family:'Courier New',monospace;font-size:0.62rem;letter-spacing:3px;">CONFIRM RECEIPT</button>
+    </div>
+</div>
+
+<!-- BLACK MARKET OVERLAY -->
+<div id="black-market-overlay" class="panel-overlay" style="display:none;" role="dialog" aria-modal="true" aria-label="Black Market panel">
+    <div class="panel-overlay-inner">
+        <div class="panel-overlay-header">
+            <span class="panel-overlay-title" style="color:#cc3300;">⛔ &nbsp;BLACK MARKET — CORRUPTED SLAG EXCHANGE</span>
+            <button class="panel-close-btn" aria-label="Close Black Market" onclick="BlackMarket.close()">✕</button>
+        </div>
+        <div id="black-market-content" style="flex:1;overflow-y:auto;padding:8px 0;"></div>
+    </div>
+</div>
+
+<!-- ═══════════════════════════════════════════════════════════════
+     V1.19.6.2 NEW SYSTEMS
+════════════════════════════════════════════════════════════════ -->
+
+
+<!-- BLACK MARKET TERMINAL MODAL -->
+<div id="bmt-modal" style="display:none;position:fixed;inset:0;z-index:19000;background:rgba(0,0,0,0.92);backdrop-filter:blur(8px);align-items:center;justify-content:center;">
+    <div style="max-width:460px;width:92%;background:rgba(5,0,8,0.99);border:1px solid rgba(200,50,20,0.5);border-top:3px solid #ff3300;border-radius:12px;padding:28px;font-family:'Courier New',monospace;position:relative;">
+        <div style="font-size:0.5rem;letter-spacing:5px;color:rgba(255,80,30,0.5);margin-bottom:16px;">// BLACK MARKET TERMINAL — INSTABILITY CRITICAL</div>
+        <div id="bmt-content"></div>
+        <button onclick="BlackMarketTerminal.close()" style="position:absolute;top:12px;right:12px;background:transparent;border:1px solid rgba(255,80,30,0.3);color:#554433;border-radius:5px;cursor:pointer;padding:4px 10px;font-size:0.6rem;font-family:'Courier New',monospace;">✕</button>
+    </div>
+</div>
+
+<!-- OPEN BLACK MARKET TERMINAL BUTTON (appears at instability 100%) -->
+<button id="bmt-open-btn" onclick="BlackMarketTerminal.open()" style="display:none;position:fixed;bottom:80px;right:16px;z-index:8800;padding:8px 16px;background:rgba(60,10,0,0.95);border:1px solid rgba(255,50,20,0.6);color:#ff5522;border-radius:6px;cursor:pointer;font-family:'Courier New',monospace;font-size:0.55rem;letter-spacing:2px;animation:pulsate 0.8s ease-in-out infinite alternate;">⛔ BLACK MARKET TERMINAL</button>
+
+<!-- RUN MUTATION SELECTION MODAL -->
+<div id="run-mutation-modal" style="display:none;position:fixed;inset:0;z-index:20000;background:rgba(0,0,5,0.96);backdrop-filter:blur(10px);align-items:center;justify-content:center;flex-direction:column;">
+    <div style="max-width:520px;width:94%;background:rgba(10,0,20,0.99);border:1px solid rgba(180,60,255,0.4);border-top:3px solid #aa44ff;border-radius:14px;padding:30px;font-family:'Courier New',monospace;">
+        <div style="font-size:0.52rem;letter-spacing:5px;color:rgba(180,60,255,0.5);margin-bottom:8px;">// UNIVERSAL COLLAPSE — CORRUPTED VARIABLES</div>
+        <div style="font-size:1.1rem;font-weight:900;color:#cc88ff;letter-spacing:3px;margin-bottom:6px;">SELECT YOUR MUTATION</div>
+        <div style="font-size:0.68rem;color:#554466;margin-bottom:20px;line-height:1.7;">The new universe is structurally flawed. One Corrupted Variable will persist for the entire next run. Choose carefully — this cannot be undone.</div>
+        <div id="run-mutation-list"></div>
+        <div style="margin-top:14px;display:flex;align-items:center;justify-content:space-between;gap:12px;">
+            <div style="font-size:0.52rem;color:#332244;letter-spacing:1px;flex:1;">These mutations were randomly generated for this collapse. They will be different next time.</div>
+            <button id="run-mutation-reroll-btn" onclick="if(window.RunMutation)RunMutation.reroll()"
+                style="flex-shrink:0;padding:7px 14px;background:rgba(80,0,120,0.4);border:1px solid rgba(180,60,255,0.4);color:#cc88ff;border-radius:6px;cursor:pointer;font-family:'Courier New',monospace;font-size:0.58rem;letter-spacing:2px;white-space:nowrap;transition:border-color 0.2s,background 0.2s;"
+                onmouseover="this.style.background='rgba(100,0,160,0.55)'" onmouseout="this.style.background='rgba(80,0,120,0.4)'">
+                ↺ REROLL <span id="run-mutation-reroll-cost">(3 LP)</span>
+            </button>
+        </div>
+    </div>
+</div>
+
+<!-- ECHO PROBE DARK MATTER ENGINE UI (injected into existing probe wrap) -->
+
+<!-- ═══════════════════════════════════════════════════════════════
+     V1.19.6.3 NEW SYSTEMS
+════════════════════════════════════════════════════════════════ -->
+<div id="crt-scanlines"></div>
+<div id="vignette-overlay"></div>
+
+
+<div id="bios-screen"></div>
+<div id="ghost-cursor"></div>
+<div id="memory-leak-terminal"></div>
+<div id="minigame-decoy"></div>
+<div id="quarantine-overlay" onclick="if(event.target===this)QuarantineZone.close()">
+    <div id="quarantine-modal"></div>
+</div>
+
+<!-- ═══════════════════════════════════════════════════════════════
+     V1.19.6.4 NEW SYSTEMS
+════════════════════════════════════════════════════════════════ -->
+
+
+
+    <script src="data.js"></script>
+    <script src="state.js"></script>
+    <script src="game.js"></script>
+    <script src="systems2.js"></script>
+    <script src="systems3.js"></script>
+    <script src="systems4.js"></script>
+    <script src="loader.js"></script>
+    <!-- Lucky Pulse orb — injected by LuckyPulse module in game.js -->
+    <div id="lucky-pulse" role="button" tabindex="0" aria-label="Lucky Pulse — click for a bonus!" style="display:none;"></div>
+    <div id="lucky-pulse-label" aria-hidden="true"></div>
+</body>
+</html>
